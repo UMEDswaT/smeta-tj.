@@ -1,4 +1,4 @@
-name: Build SMETA TJ APK
+name: Build SMETA TJ Working APK
 
 on:
   workflow_dispatch:
@@ -19,211 +19,22 @@ jobs:
         with:
           channel: stable
 
-      - name: Create SMETA TJ
+      - name: Create working SMETA TJ
         run: |
           flutter create --org tj.smetatj --project-name smeta_tj app
           cd app
-
-          cat > lib/main.dart <<'DART'
-          import 'package:flutter/material.dart';
-
-          void main() {
-            runApp(const SmetaTJ());
-          }
-
-          class SmetaTJ extends StatelessWidget {
-            const SmetaTJ({super.key});
-
-            @override
-            Widget build(BuildContext context) {
-              return MaterialApp(
-                debugShowCheckedModeBanner: false,
-                title: 'SMETA TJ',
-                theme: ThemeData(
-                  useMaterial3: true,
-                  colorScheme: ColorScheme.fromSeed(
-                    seedColor: const Color(0xFF123A73),
-                  ),
-                  scaffoldBackgroundColor: const Color(0xFFF3F5F7),
-                ),
-                home: const HomePage(),
-              );
-            }
-          }
-
-          class HomePage extends StatefulWidget {
-            const HomePage({super.key});
-
-            @override
-            State<HomePage> createState() => _HomePageState();
-          }
-
-          class _HomePageState extends State<HomePage> {
-            int index = 0;
-
-            @override
-            Widget build(BuildContext context) {
-              final pages = [
-                const Dashboard(),
-                const Center(child: Text('Смета')),
-                const Center(child: Text('Нархҳо')),
-                const Center(child: Text('Маркет')),
-                const Center(child: Text('Профил')),
-              ];
-
-              return Scaffold(
-                body: pages[index],
-                bottomNavigationBar: NavigationBar(
-                  selectedIndex: index,
-                  onDestinationSelected: (value) {
-                    setState(() => index = value);
-                  },
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      label: 'Асосӣ',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.calculate_outlined),
-                      label: 'Смета',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.price_check_outlined),
-                      label: 'Нархҳо',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.storefront_outlined),
-                      label: 'Маркет',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      label: 'Профил',
-                    ),
-                  ],
-                ),
-              );
-            }
-          }
-
-          class Dashboard extends StatelessWidget {
-            const Dashboard({super.key});
-
-            @override
-            Widget build(BuildContext context) {
-              return ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(22, 65, 22, 28),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF123A73),
-                          Color(0xFF23599B),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(30),
-                        bottomRight: Radius.circular(30),
-                      ),
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'SMETA TJ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Ҳисоби дуруст. Сохтмони босифат. Тоҷикистон обод.',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Панели асосӣ',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _card(
-                          Icons.calculate,
-                          'Сметаи нав',
-                          'Ҳисоби корҳои сохтмонӣ',
-                        ),
-                        _card(
-                          Icons.auto_awesome,
-                          'AI Engineer',
-                          'Санҷиш ва таҳлили смета',
-                        ),
-                        _card(
-                          Icons.price_check,
-                          'Нархҳои бозор',
-                          'MIN • AVG • MAX',
-                        ),
-                        _card(
-                          Icons.storefront,
-                          'Фурӯшандагон',
-                          'Мол, нарх ва пешниҳодҳо',
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            Widget _card(
-              IconData icon,
-              String title,
-              String subtitle,
-            ) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: CircleAvatar(
-                    child: Icon(icon),
-                  ),
-                  title: Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  subtitle: Text(subtitle),
-                  trailing: const Icon(Icons.chevron_right),
-                ),
-              );
-            }
-          }
-          DART
-
+          flutter pub add shared_preferences
+          printf '%s' 'H4sIAAs3omoC/+1b3W7cxhW+z1NMgABLNltalvK7/klXstU6sBvBEpILQxCo3dld1lySJrmSFUeAHNutkZs0bYAGSIIgbi96V1mSa8W2FKB9Aa7yBn2CPkLPOTMkh1xydyX/JmmAWMvhzJkzZ87Pd84Mra7n+iGrNE0/rDVcZ4X7YeXES5Zs9szGZbPNay27F4bcP9Y14V/LtA3sX9Av6Jg+by55Pm9xnzsNHhwbbIoHv7TiWk3WNS1H09mp08zvOXXP04CLIGTzXR6aC+9ig65D34ZtBgGbD12fs2svMdayHNNm560gPHnB9E7Oh77ltKusueaYXatx+jTjQWghuwE7xS4tnhhniOe7zV4jPMSIgNs29+MBMKLp9pZtzto8TBhYcEMgckrhyGi5dlObqDItqDJOaw/Yq0zjlypXwrXKIjMD5vS6OvsFtXm+1eBpq04TzfbCns9PoghPM9s1myBDM1hzGiSdmHUPODNXTQvkSdswp+wC8HgOJG3Cg6afoEEJh/TEmGE0bG76mp48m81m3ba1JZ/DjB7SEELRKsnYiq5LcrE8j0AtHpoSk6I+Ai05Mia1juIbsqeCgmh/h/nmqi5FarWYBo/s1CnYB9tmH32Ebw0rONv1wjWd+Ry2xJGqE+9A0wxN2ITfBa5zhjfcJteIIuwlsiB6yoHY1eianqYJnShiz2j5blfjOB5e67oRukhHS1eWUYzAXOFPQjFEV88Iiva7Sqs769Dqkma9fGiyuZmRceuQgfFOZsbJxnhz1xNfkXgQxq+G3Gmi+wDObB4EH1hNNFGUyIC7uRb0PO4bl/naOpH8lQtO0beaHH7Lccs9Cwx4Gv+dcZ0QyCMZ/Cs3TnhJpCb1EzwDX+615zvu6kyHNy7z5gXgfdp0HO7XWMu0A15NuoZWaPMaq8xfOLtQZwvvVpRXHd6FVwv45wzoS0qfsV7A45mnaiz0ewpJXKft+vMNMX4mfSCNmue8CYLkTXpRk0KhB23i6uzs8cmp+ptTuq4SDBpmCx3ZNPj+tu/2nLLBs6/Pvjlbz4y1HK8Xoj34Zmi5zoLgSgw8V/BOW3b9JkrqvV5oWw6nPtPUpqlcKT87bkpyvgM6oiUvYVtTLcFXWQVp9exB/SAKw1SDhp6kfqdZA3xIyKlJxLYleiEblOmV9iwTMaU01gUU+06JGCgMc9l1bYbuag3aSYmw1XJC+L/Jr0LjBAULlU8KupZjhTF3wi2IlSnt0uviZIaILwYon6NpSzCEfGEX9jzkTZ2RheIgGcclQ6iB+gm2nvommhs8jc+DjuirDr22rg9wO4bBpc75ZZo5ccRy56Saggo110DzOQzztUYHSMGT5Td6tunP+W4bmArOOU2rYcKatSTuSH8J6IbCvFSh34B2zUGbRgKqCTlVWdutMc0aWBk8xhtipep6VrrKAjqNjum0OTAohZWMmUMsEBxmxLxwj4ebxG1Z9iBfssNiJmol8pWDhZjnzRavw3bEgib5XSIhLCbzLLth6HZ/a65YbTL1aRMsPPOYujfw8rwB2nYOSdSEOFNjx+AK0nRo3LzsOnorqop3ToYHsde4pDislCtlIs2CjjV2Dv7V8J/AQKez5Aof1dSrzDaXuQ2ePPpj/3q037/+w18rGT84JtmGaaOahsW0v40eRff6H0ebR6JN6HKpgUGpkPrX0WZ/o3/rYDvaPxJ90hyIMU5YSP4rJB89wAUcjX3QbdeJSauUvwG6+/2b0W70UKW8mEQB8SMPG2LLHgM0JE4gjQtVMIsrPQsQFYRqS64+39h2hU8UrkXkNNQxbXzftHt8RhjoSXDop8G1HMU5grojPnzf4qupLXmAlQFP1dhZGA9Qj4eB8SH33VRIZLUAB2sZI0DqkK1xX0UdCjkhFYUoQovzCxentcnXqmzyLfif/mb2GW0vjvUxiWn3agoAspMx1vbNpgVevAYrcyAH+LV81gjhgPVeGsAtVQWNTE69MVmf0hdzTKA3QjhxEYj1gMi08mS4jr2mCW91nrdgZtnekOFDm5qAOUSHi1a7U9wjN2PuUTrKBDz1uo7W8N0gqF+1grpttZ0uLXpmoA2UDBLqasmm4X8LoAuaAidB29YQYWL7PP4UspO4MDBWO1YIWtuC/Z63PoSOU5Pi6QMuVjeb/DZW354YWBpEHRjWhG3UOnLEWwNdBFMHW9Eu+sbobrTLop3+DXA2N/rX+x8bDBzbfv8WOLZH8HoPX99FHwr9b4LTwA53ov2D+2DgD5AGdIRujEjtRzvGEZZ5/PX8SrJqknmYE2o/ri2YgB+Pv1G86U9luw/+GW1Gj/qfgOBAaDJE1Ngr1wSmy5QnII0UOVY9mLWuQi4wqa8z2haSPYStRJhiYalIU+lNHlZJJEDLq8rx1wZ6mg3yBLloWFWDH+rHHvzZqlQprOwefBntgL5ssH//hd5gFIOoDwpDYoFuAg60Xe24PnxGsxe6S+YqD8DhA/X6OXbWaYPz4T5Ndh0izQ5R/QMoI+npvf4t1FEKbtCAcegh9Pgu2kvmlQHO9Q2vB3BYuuxqkj1iZLkIcQ2SH3TtmP0g9oaRQm51i2IPANXhzCsBvpqN59KkovsoJlxJrBtxKm7Y3GmHnfVUfqATm9Hd/sesf7t/gxa9iZanCnNyBD8pIEB2/oYW/8M/+reB1B4RRMb2VG5kgp8w07+ZH6NOPzW2CS8q+WAaTRVeMcFmiDiqTFiHyMyTp6C3XGXvQ04zA8a9DGkwC02P+Jgx/WbqGLqmD9pS4BOUuAJqP6nnAnCNYvcCQHHVyUBKbHo1nCqb3oP6OOHcYfyPDekSdcY0yOb1FVhvkhoRxsLFZ+UpaxPkYqQ0hjiGIlfwVt4VgBhVqvCYndE3LVtZk4qLO3wFFGnJR8pFZQA11VbTrTHAXSY7OyTAk5nVaJSn6o4cNFjdhS0tQXeDdT3H7GKNAAV5tmkBbG7jIN9FC9IyGe2VcG28jj3HCkt7Ih8Ith/9a7uSTZjR64w3gXs5KUYGHXf1DPg+t30SaxunY69YY4l7zDvDOtALxZjYSqQ2pQqpQTZAfm63/3v4/9NMSEyTA2lDkL0CtzbAb5hpvoEsE37OBms8t8C4LGLfBeXJ6FpOcXhGXmYtDmi9kciiRntWLUDBuUKYRpnNghT41xSbwYE/oBjX/4zBI0acexhxwDFC0qP6k5JQO6H0KeYO9KTKQPGXXfBpC2teRrDEIjYaTq+7zP0PrLDznkdZtAYLAgOyRSVSP/QClQj+hFaCinxoNv4EEHMbBLrzhJggu3guApWBv5rFdemqFtOfIgZiKoWDp3sQoBzNdeawREZ1lTyAcb0Uv1AdUq9mExpphZ9F94TC4rxs1gKZNA9JXi6+iPoXgLH2oy00aV0G97iKh+VB8DMvy6qkLF5l/CE4IXF6Z4T+2pzpB1wD3TdwVsPnnm02OB4wVaqITYxKrj5YMJq2euR45Aw9gOgIwKKr6fGZEh4xXVHPmzz14Qo7ySZEK/zIrimL8QM8HdOuVXCeinA46nTAD547gq3DL7SSijCWXB9xDgkqvJ45oZEgjU6aRLuMZMqh1OGrFvmyIszmeVQgrNNfrcjJq5UwRYkRLJRpGQomnrfKRHlpAGdAJz1TMRBFzryQ5a5l0Oc7cUafqTsnue8+qiyLvlejE6LteyIFfhVfbUISfBscPQBueIGZra5n5qglNR5DRsd8zWRkYjo5gNlBM0PencEa/+BKBRQvHjKdBmgQaFyfz/4njAbxQY7yJUtWl4v6h+IkfdyD8iJCsmhN+HwIxi7GuzAFWdBiki6jXTwu/C0FwpAAxQtdZ/SbbBMeIKOlZ7lgTNUNkMsr18IhybxRKZk2BdiKoZRYQhPAclqGhtVnDUoC0gF98XkXPEA91Cz9RJHbUFwGWy9kUy/YzvV8R2Vky3ZNBJ118gJiUbARBa2GyAVg8qM7h6TsXBqPijKS9DBnjHxEOfn5CWYjYyUZO1QH3DxyogHrbVweNctE5dknJxKaIZwfAPE/xuTkq6eSifwfvw/F74+zKrKM55TmbUZbB/exmFhF7S9K+n78mcm3omp6lLzk6JmFdHoF42m7HzszySQjQTZNkZlJUJaZJBXmUYnJGOkI/KYFwe/ghU1NSsvuzzBTSYR+9EQlPgd4UVOU3MnF42YoXpKhxIRLEpRD5xVJ7V1KvawCL7bVclZgW1x/bWkyvUVRBueVFMJ75hmLl8lK0kDFjjF6Gacw/9m4Q2Andv418VoY8uL6M89VEsX5eaYq0j2VJCrKHbJx7tIqN85+gqmK13EdPiqLePXttyeziUTDGnLgEmc4n/dvyFPNu9G955CIDJzG/sgPR8DBHPyZQu3mk8L/uPt5pJzFyLLLIXm+A3HzIQTVm3T8/WSYRZ07NCN/B5lt9zfAYYMKUPLU//TnCMYRv5bB3yJIG19TGIVoST0qUpNy73DDKmLf1DcvLKotu73xxEHt0nIvgCAeBOXoNpb/kcHt4L2SFxbmZq/EPC7KDRKUK+k+H5CbXgwaB9oGzxzawoxknxK9UoMw5ueAV2MN+HnC1QKcUghcxR250Z/3yLt0o7/vER2LPvARbwq+8FFe5D7xiYml3/hcGQ5B5b0z0wlWuQ9dRSwj/4WX3eUFSLpQi96JRV/ghdgtrMTSvdlPWf3cL3P3EfH9pkBK23j/Ntph4k6fUTmRfLNjBpeTL4XkWRxMf0XGKPe8C/zMmEH62ZD6WY/cF4yuodEQd8gDrYLuVgaNR8DuHkZkjLlqH7o/SSVx3PCC99/DMnbFie/AuwfCrxOaUrxfKr3/fvP5jpTRI1rzJ1itRmncxX9w/B5KAq8kg9O/Lq8O0TXkDexD9z7x+g2uon8resjEM5AB6cf3rZlUUoKhVXbwJb6mVe+y7AJh1vgiD34TsRnfJaWbzWKH4ZERJqM702Lz6FLmHt6EBoNA1Nu/AV3EpLv40QlDCQEQ/g4eN4SWoMjhLfXbwa2Whs84wLLBvdogctuFUt4EZbqHVf78u/5tXBb1kPtXtg/f3GEA+nDV+8mdprhUti9a+7dhHcll3y1x15u2jUAqTJGtH1eVYhUJCYH1Lp6yM9wHPG3BVZFUVYE+ENsKxoOnGJ+AZd3AGgbMKvOJbVCJG6hYqBi4JVvE4i4ajoIMchItWneqIBl7FNbH0qIblkn2cmvHLcypLQosVpLN3CXkYwVKIQov2F+wDRSNxEHAc8IQKvdGxo8IxUTx7OCubEb3UQnxwIc6EVaCsVtiLYL128R6Vtvo7/qzhq3q/W19AE0m38uMvstfcge/5CJdlUHui9+sACiehAfzqnx4/dA5WuL2K1n4UpYqZkGlmlAZGHvV+AyuvjwgK/fgSyLzt7ErIhe3NyZ/2XvJKsCMv7IYdzMkXBNGNsZHCzAyc4F+seSkPvkicqyj+vT7yREFsNJK17PL4TLfyT0Fa5DYvyhpGH0BXegdl9YKfbEgkMHlw75qGv41ygDEr9tex2QTxiTh+/daLcThFX08FZ4oVeH4656S73USaYy8tiwjYubqspJhJHlK4WWt9Uo+0xETnbFWLMxTk4Xkeg1lL3uqFX8cEn8bMoy9/CcmT4O7IdWJMrZy35o8Ba4KP8saZyMXht/tyrCweJSwMGioA853lNut5EFTDB4IegA6AziBN0PSSieitF3cl4NtAZ5vozzyiCGDDrM4xHXQSnPwAwGf7YLTSGDKKEgyLAj8D/C9k4slSQAA' | base64 -d | gzip -d > lib/main.dart
           sed -i 's/tj\.smetatj\.smeta_tj/tj.smetatj.app/g' android/app/build.gradle.kts || true
           grep -RIl 'package tj.smetatj.smeta_tj' android/app/src/main/kotlin | xargs -r sed -i 's/package tj\.smetatj\.smeta_tj/package tj.smetatj.app/g'
           sed -i 's/android:label="smeta_tj"/android:label="SMETA TJ"/g' android/app/src/main/AndroidManifest.xml
-
           flutter pub get
+          flutter analyze
           flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: SMETA-TJ-APK
+          name: SMETA-TJ-WORKING-APK
           path: app/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error

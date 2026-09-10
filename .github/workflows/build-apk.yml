@@ -1,4 +1,4 @@
-name: Build SMETA TJ APK
+name: Build SMETA TJ Online APK
 
 on:
   workflow_dispatch:
@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -22,33 +20,614 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Restore working app and build APK
+      - name: Create SMETA TJ Online
+        env:
+          SUPABASE_URL: ${{ secrets.SMETA_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SMETA_SUPABASE_PUBLISHABLE_KEY }}
+
         run: |
           set -e
 
-          git show fba0acfd83c023a70bd8bea8232035ee626cdd4c:.github/workflows/build-apk.yml > /tmp/working.yml
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "SMETA_SUPABASE_URL is missing"
+            exit 1
+          fi
 
-          flutter create --org tj.smetatj --project-name smeta_tj app
+          if [ -z "$SUPABASE_KEY" ]; then
+            echo "SMETA_SUPABASE_PUBLISHABLE_KEY is missing"
+            exit 1
+          fi
+
+          flutter create \
+            --org tj.smetatj \
+            --project-name smeta_tj \
+            app
+
           cd app
 
-          flutter pub add shared_preferences
+          flutter pub add supabase_flutter
+
           rm -f test/widget_test.dart
 
-          sed -n "/cat > lib\/main.dart <<'DART'/,/^          DART$/p" /tmp/working.yml \
-            | sed '1d;$d;s/^          //' > lib/main.dart
+          cat > lib/main.dart <<'DART'
+          import 'package:flutter/material.dart';
+          import 'package:supabase_flutter/supabase_flutter.dart';
 
-          test -s lib/main.dart
+          const supabaseUrl =
+              String.fromEnvironment('SUPABASE_URL');
 
-          sed -i 's/android:label="smeta_tj"/android:label="SMETA TJ"/g' android/app/src/main/AndroidManifest.xml
+          const supabaseKey =
+              String.fromEnvironment('SUPABASE_KEY');
 
-          flutter pub get
-          flutter analyze
-          flutter build apk --debug
+          SupabaseClient get supabase =>
+              Supabase.instance.client;
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: SMETA-TJ-APK
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
+          Future<void> main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+
+            await Supabase.initialize(
+              url: supabaseUrl,
+              anonKey: supabaseKey,
+            );
+
+            runApp(const SmetaTJ());
+          }
+
+          void msg(BuildContext context, String text) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(content: Text(text)),
+              );
+          }
+
+          double number(dynamic value) {
+            if (value is num) {
+              return value.toDouble();
+            }
+
+            return double.tryParse(
+                  value?.toString() ?? '',
+                ) ??
+                0;
+          }
+
+          List<Map<String, dynamic>> list(dynamic data) {
+            if (data is! List) {
+              return [];
+            }
+
+            return data
+                .map(
+                  (e) => Map<String, dynamic>.from(
+                    e as Map,
+                  ),
+                )
+                .toList();
+          }
+
+          class SmetaTJ extends StatelessWidget {
+            const SmetaTJ({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'SMETA TJ',
+                theme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor:
+                        const Color(0xFF123A73),
+                  ),
+                ),
+                home: const AuthGate(),
+              );
+            }
+          }
+
+          class AuthGate extends StatelessWidget {
+            const AuthGate({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return StreamBuilder<AuthState>(
+                stream:
+                    supabase.auth.onAuthStateChange,
+                builder: (context, snapshot) {
+                  if (supabase.auth.currentUser ==
+                      null) {
+                    return const LoginPage();
+                  }
+
+                  return const HomePage();
+                },
+              );
+            }
+          }
+
+          class LoginPage extends StatefulWidget {
+            const LoginPage({super.key});
+
+            @override
+            State<LoginPage> createState() =>
+                _LoginPageState();
+          }
+
+          class _LoginPageState
+              extends State<LoginPage> {
+            final email =
+                TextEditingController();
+
+            final password =
+                TextEditingController();
+
+            bool register = false;
+            bool loading = false;
+
+            Future<void> submit() async {
+              final e = email.text.trim();
+              final p = password.text.trim();
+
+              if (e.isEmpty || p.length < 6) {
+                msg(
+                  context,
+                  'Email ва рамзи на кам аз 6 аломатро ворид кунед',
+                );
+                return;
+              }
+
+              setState(() => loading = true);
+
+              try {
+                if (register) {
+                  final result =
+                      await supabase.auth.signUp(
+                    email: e,
+                    password: p,
+                  );
+
+                  if (!mounted) return;
+
+                  if (result.session == null) {
+                    msg(
+                      context,
+                      'Сабти ном шуд. Email-ро санҷед.',
+                    );
+                  }
+                } else {
+                  await supabase.auth
+                      .signInWithPassword(
+                    email: e,
+                    password: p,
+                  );
+                }
+              } on AuthException catch (e) {
+                if (mounted) {
+                  msg(context, e.message);
+                }
+              } catch (_) {
+                if (mounted) {
+                  msg(
+                    context,
+                    'Пайвастшавӣ ба сервер нашуд',
+                  );
+                }
+              }
+
+              if (mounted) {
+                setState(() => loading = false);
+              }
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                body: Center(
+                  child: SingleChildScrollView(
+                    padding:
+                        const EdgeInsets.all(24),
+                    child: Card(
+                      child: Padding(
+                        padding:
+                            const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize:
+                              MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.engineering,
+                              size: 70,
+                            ),
+                            const SizedBox(
+                              height: 15,
+                            ),
+                            const Text(
+                              'SMETA TJ',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight:
+                                    FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 25,
+                            ),
+                            TextField(
+                              controller: email,
+                              decoration:
+                                  const InputDecoration(
+                                border:
+                                    OutlineInputBorder(),
+                                labelText: 'Email',
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 12,
+                            ),
+                            TextField(
+                              controller: password,
+                              obscureText: true,
+                              decoration:
+                                  const InputDecoration(
+                                border:
+                                    OutlineInputBorder(),
+                                labelText: 'Рамз',
+                              ),
+                            ),
+                            const SizedBox(
+                              height: 18,
+                            ),
+                            SizedBox(
+                              width:
+                                  double.infinity,
+                              child: FilledButton(
+                                onPressed: loading
+                                    ? null
+                                    : submit,
+                                child: Text(
+                                  register
+                                      ? 'Сабти ном'
+                                      : 'Ворид шудан',
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  register =
+                                      !register;
+                                });
+                              },
+                              child: Text(
+                                register
+                                    ? 'Ҳисоб доред? Ворид шавед'
+                                    : 'Ҳисоб надоред? Сабти ном',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+
+          class HomePage extends StatefulWidget {
+            const HomePage({super.key});
+
+            @override
+            State<HomePage> createState() =>
+                _HomePageState();
+          }
+
+          class _HomePageState
+              extends State<HomePage> {
+            int page = 0;
+
+            bool loading = true;
+            bool online = false;
+
+            List<Map<String, dynamic>>
+                estimates = [];
+
+            List<Map<String, dynamic>>
+                prices = [];
+
+            List<Map<String, dynamic>>
+                sellers = [];
+
+            @override
+            void initState() {
+              super.initState();
+              load();
+            }
+
+            double get total {
+              return estimates.fold<double>(
+                0,
+                (sum, item) {
+                  return sum +
+                      number(item['quantity']) *
+                          number(item['price']);
+                },
+              );
+            }
+
+            Future<void> load() async {
+              final user =
+                  supabase.auth.currentUser;
+
+              if (user == null) return;
+
+              try {
+                final data = await supabase
+                    .from('smeta_user_data')
+                    .select()
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+
+                if (data == null) {
+                  await save();
+                } else {
+                  estimates =
+                      list(data['estimates']);
+
+                  prices =
+                      list(data['prices']);
+
+                  sellers =
+                      list(data['sellers']);
+                }
+
+                online = true;
+              } catch (_) {
+                online = false;
+              }
+
+              if (mounted) {
+                setState(() {
+                  loading = false;
+                });
+              }
+            }
+
+            Future<void> save() async {
+              final user =
+                  supabase.auth.currentUser;
+
+              if (user == null) return;
+
+              try {
+                await supabase
+                    .from('smeta_user_data')
+                    .upsert(
+                  {
+                    'user_id': user.id,
+                    'estimates': estimates,
+                    'prices': prices,
+                    'sellers': sellers,
+                    'updated_at':
+                        DateTime.now()
+                            .toUtc()
+                            .toIso8601String(),
+                  },
+                  onConflict: 'user_id',
+                );
+
+                online = true;
+              } catch (_) {
+                online = false;
+              }
+
+              if (mounted) {
+                setState(() {});
+              }
+            }
+
+            Future<Map<String, String>?>
+                dialog(
+              String title,
+              List<String> labels,
+            ) async {
+              final controllers = labels
+                  .map(
+                    (_) =>
+                        TextEditingController(),
+                  )
+                  .toList();
+
+              return showDialog<
+                  Map<String, String>>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: Text(title),
+                    content:
+                        SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize:
+                            MainAxisSize.min,
+                        children:
+                            List.generate(
+                          labels.length,
+                          (i) {
+                            return Padding(
+                              padding:
+                                  const EdgeInsets
+                                      .only(
+                                bottom: 10,
+                              ),
+                              child:
+                                  TextField(
+                                controller:
+                                    controllers[
+                                        i],
+                                decoration:
+                                    InputDecoration(
+                                  labelText:
+                                      labels[i],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pop(
+                          context,
+                        ),
+                        child: const Text(
+                          'Бекор',
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          if (controllers
+                              .first
+                              .text
+                              .trim()
+                              .isEmpty) {
+                            return;
+                          }
+
+                          Navigator.pop(
+                            context,
+                            {
+                              for (int i = 0;
+                                  i <
+                                      labels
+                                          .length;
+                                  i++)
+                                labels[i]:
+                                    controllers[
+                                            i]
+                                        .text
+                                        .trim(),
+                            },
+                          );
+                        },
+                        child: const Text(
+                          'Сабт',
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
+
+            Future<void>
+                addEstimate() async {
+              final r = await dialog(
+                'Сметаи нав',
+                [
+                  'Ном',
+                  'Миқдор',
+                  'Воҳид',
+                  'Нарх',
+                ],
+              );
+
+              if (r == null) return;
+
+              final q = double.tryParse(
+                (r['Миқдор'] ?? '')
+                    .replaceAll(',', '.'),
+              );
+
+              final p = double.tryParse(
+                (r['Нарх'] ?? '')
+                    .replaceAll(',', '.'),
+              );
+
+              if (q == null || p == null) {
+                if (mounted) {
+                  msg(
+                    context,
+                    'Миқдор ва нархро бо рақам нависед',
+                  );
+                }
+                return;
+              }
+
+              estimates.add(
+                {
+                  'name': r['Ном'],
+                  'quantity': q,
+                  'unit': r['Воҳид'],
+                  'price': p,
+                },
+              );
+
+              await save();
+            }
+
+            Future<void> addPrice() async {
+              final r = await dialog(
+                'Нархи нав',
+                [
+                  'Ном',
+                  'Нарх',
+                  'Воҳид',
+                  'Шаҳр',
+                ],
+              );
+
+              if (r == null) return;
+
+              final p = double.tryParse(
+                (r['Нарх'] ?? '')
+                    .replaceAll(',', '.'),
+              );
+
+              if (p == null) return;
+
+              prices.add(
+                {
+                  'name': r['Ном'],
+                  'price': p,
+                  'unit': r['Воҳид'],
+                  'city': r['Шаҳр'],
+                },
+              );
+
+              await save();
+            }
+
+            Future<void>
+                addSeller() async {
+              final r = await dialog(
+                'Фурӯшандаи нав',
+                [
+                  'Номи мағоза',
+                  'Телефон',
+                  'Категория',
+                  'Шаҳр',
+                ],
+              );
+
+              if (r == null) return;
+
+              sellers.add(
+                {
+                  'store':
+                      r['Номи мағоза'],
+                  'phone': r['Телефон'],
+                  'category':
+                      r['Категория'],
+                  'city': r['Шаҳр'],
+                },
+              );
+
+              await save();
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              if (

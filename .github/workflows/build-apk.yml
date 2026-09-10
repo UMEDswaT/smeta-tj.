@@ -1,4 +1,4 @@
-name: Build SMETA TJ Working APK
+name: Build SMETA TJ Online APK
 
 on:
   workflow_dispatch:
@@ -20,10 +20,30 @@ jobs:
           channel: stable
 
       - name: Create SMETA TJ
+        env:
+          SUPABASE_URL: ${{ secrets.SMETA_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SMETA_SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          flutter create --org tj.smetatj --project-name smeta_tj app
+          set -e
+
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "SMETA_SUPABASE_URL is missing"
+            exit 1
+          fi
+
+          if [ -z "$SUPABASE_KEY" ]; then
+            echo "SMETA_SUPABASE_PUBLISHABLE_KEY is missing"
+            exit 1
+          fi
+
+          flutter create \
+            --org tj.smetatj \
+            --project-name smeta_tj \
+            app
+
           cd app
 
+          flutter pub add supabase_flutter
           flutter pub add shared_preferences
 
           rm -f test/widget_test.dart
@@ -32,9 +52,50 @@ jobs:
           import 'dart:convert';
           import 'package:flutter/material.dart';
           import 'package:shared_preferences/shared_preferences.dart';
+          import 'package:supabase_flutter/supabase_flutter.dart';
 
-          void main() {
+          const supabaseUrl =
+              String.fromEnvironment('SUPABASE_URL');
+
+          const supabaseKey =
+              String.fromEnvironment('SUPABASE_KEY');
+
+          SupabaseClient get supabase =>
+              Supabase.instance.client;
+
+          Future<void> main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+
+            await Supabase.initialize(
+              url: supabaseUrl,
+              anonKey: supabaseKey,
+            );
+
             runApp(const SmetaTJApp());
+          }
+
+          double numValue(dynamic value) {
+            if (value is num) {
+              return value.toDouble();
+            }
+
+            return double.tryParse(
+                  value?.toString() ?? '',
+                ) ??
+                0;
+          }
+
+          void message(
+            BuildContext context,
+            String text,
+          ) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(text),
+                ),
+              );
           }
 
           class SmetaTJApp extends StatelessWidget {
@@ -48,153 +109,293 @@ jobs:
                 theme: ThemeData(
                   useMaterial3: true,
                   colorScheme: ColorScheme.fromSeed(
-                    seedColor: const Color(0xFF123A73),
+                    seedColor:
+                        const Color(0xFF123A73),
                   ),
-                  scaffoldBackgroundColor: const Color(0xFFF4F6F8),
-                  inputDecorationTheme: const InputDecorationTheme(
+                  scaffoldBackgroundColor:
+                      const Color(0xFFF4F6F8),
+                  inputDecorationTheme:
+                      const InputDecorationTheme(
                     border: OutlineInputBorder(),
                   ),
                 ),
-                home: const HomePage(),
+                home: const AuthGate(),
               );
             }
           }
 
-          class HomePage extends StatefulWidget {
-            const HomePage({super.key});
+          class AuthGate extends StatelessWidget {
+            const AuthGate({super.key});
 
             @override
-            State<HomePage> createState() => _HomePageState();
-          }
+            Widget build(BuildContext context) {
+              return StreamBuilder<AuthState>(
+                stream:
+                    supabase.auth.onAuthStateChange,
+                builder: (context, snapshot) {
+                  final session =
+                      supabase.auth.currentSession;
 
-          class _HomePageState extends State<HomePage> {
-            int index = 0;
-            bool loading = true;
+                  if (session == null) {
+                    return const AuthPage();
+                  }
 
-            List<Map<String, dynamic>> estimates = [];
-            List<Map<String, dynamic>> prices = [];
-            List<Map<String, dynamic>> sellers = [];
-
-            @override
-            void initState() {
-              super.initState();
-              loadData();
-            }
-
-            Future<void> loadData() async {
-              final prefs = await SharedPreferences.getInstance();
-
-              estimates = _decodeList(
-                prefs.getString('estimates'),
-              );
-              prices = _decodeList(
-                prefs.getString('prices'),
-              );
-              sellers = _decodeList(
-                prefs.getString('sellers'),
-              );
-
-              if (mounted) {
-                setState(() {
-                  loading = false;
-                });
-              }
-            }
-
-            List<Map<String, dynamic>> _decodeList(String? raw) {
-              if (raw == null || raw.isEmpty) {
-                return [];
-              }
-
-              try {
-                final data = jsonDecode(raw);
-                if (data is List) {
-                  return data
-                      .map(
-                        (e) => Map<String, dynamic>.from(e as Map),
-                      )
-                      .toList();
-                }
-              } catch (_) {}
-
-              return [];
-            }
-
-            Future<void> saveData() async {
-              final prefs = await SharedPreferences.getInstance();
-
-              await prefs.setString(
-                'estimates',
-                jsonEncode(estimates),
-              );
-              await prefs.setString(
-                'prices',
-                jsonEncode(prices),
-              );
-              await prefs.setString(
-                'sellers',
-                jsonEncode(sellers),
-              );
-            }
-
-            double get estimateTotal {
-              return estimates.fold<double>(
-                0,
-                (sum, item) {
-                  final quantity =
-                      (item['quantity'] as num?)?.toDouble() ?? 0;
-                  final price =
-                      (item['price'] as num?)?.toDouble() ?? 0;
-                  return sum + quantity * price;
+                  return const MainPage();
                 },
               );
+            }
+          }
+
+          class AuthPage extends StatefulWidget {
+            const AuthPage({super.key});
+
+            @override
+            State<AuthPage> createState() =>
+                _AuthPageState();
+          }
+
+          class _AuthPageState
+              extends State<AuthPage> {
+            final email =
+                TextEditingController();
+
+            final password =
+                TextEditingController();
+
+            bool register = false;
+            bool loading = false;
+
+            Future<void> submit() async {
+              final e = email.text.trim();
+              final p = password.text.trim();
+
+              if (e.isEmpty || p.length < 6) {
+                message(
+                  context,
+                  'Email ва рамзи на кам аз 6 аломатро ворид кунед.',
+                );
+                return;
+              }
+
+              setState(() => loading = true);
+
+              try {
+                if (register) {
+                  final result =
+                      await supabase.auth.signUp(
+                    email: e,
+                    password: p,
+                  );
+
+                  if (!mounted) return;
+
+                  if (result.session == null) {
+                    message(
+                      context,
+                      'Сабти ном шуд. Email-ро санҷед ва тасдиқ кунед.',
+                    );
+                  }
+                } else {
+                  await supabase.auth
+                      .signInWithPassword(
+                    email: e,
+                    password: p,
+                  );
+                }
+              } on AuthException catch (e) {
+                if (mounted) {
+                  message(context, e.message);
+                }
+              } catch (e) {
+                if (mounted) {
+                  message(
+                    context,
+                    'Пайвастшавӣ ба сервер нашуд.',
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(
+                    () => loading = false,
+                  );
+                }
+              }
             }
 
             @override
             Widget build(BuildContext context) {
-              if (loading) {
-                return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
+              return Scaffold(
+                body: SafeArea(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding:
+                          const EdgeInsets.all(24),
+                      child: ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(
+                          maxWidth: 460,
+                        ),
+                        child: Card(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.all(
+                              24,
+                            ),
+                            child: Column(
+                              mainAxisSize:
+                                  MainAxisSize.min,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment
+                                      .stretch,
+                              children: [
+                                const Icon(
+                                  Icons
+                                      .engineering_outlined,
+                                  size: 64,
+                                ),
+                                const SizedBox(
+                                  height: 16,
+                                ),
+                                const Text(
+                                  'SMETA TJ',
+                                  textAlign:
+                                      TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight:
+                                        FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 8,
+                                ),
+                                Text(
+                                  register
+                                      ? 'Сабти номи корбар'
+                                      : 'Ворид шудан',
+                                  textAlign:
+                                      TextAlign.center,
+                                ),
+                                const SizedBox(
+                                  height: 24,
+                                ),
+                                TextField(
+                                  controller: email,
+                                  keyboardType:
+                                      TextInputType
+                                          .emailAddress,
+                                  decoration:
+                                      const InputDecoration(
+                                    labelText:
+                                        'Email',
+                                    prefixIcon:
+                                        Icon(
+                                      Icons.email_outlined,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 12,
+                                ),
+                                TextField(
+                                  controller: password,
+                                  obscureText: true,
+                                  decoration:
+                                      const InputDecoration(
+                                    labelText:
+                                        'Рамз',
+                                    prefixIcon:
+                                        Icon(
+                                      Icons.lock_outline,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: 18,
+                                ),
+                                FilledButton(
+                                  onPressed:
+                                      loading
+                                          ? null
+                                          : submit,
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets
+                                            .all(14),
+                                    child: loading
+                                        ? const SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child:
+                                                CircularProgressIndicator(
+                                              strokeWidth:
+                                                  2,
+                                            ),
+                                          )
+                                        : Text(
+                                            register
+                                                ? 'Сабти ном'
+                                                : 'Ворид шудан',
+                                          ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: loading
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            register =
+                                                !register;
+                                          });
+                                        },
+                                  child: Text(
+                                    register
+                                        ? 'Ҳисоб доред? Ворид шавед'
+                                        : 'Ҳисоб надоред? Сабти ном',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                );
-              }
+                ),
+              );
+            }
+          }
 
+          class MainPage extends StatefulWidget {
+            const MainPage({super.key});
+
+            @override
+            State<MainPage> createState() =>
+                _MainPageState();
+          }
+
+          class _MainPageState
+              extends State<MainPage> {
+            int index = 0;
+
+            @override
+            Widget build(BuildContext context) {
               final pages = [
                 DashboardPage(
-                  estimateTotal: estimateTotal,
-                  estimatesCount: estimates.length,
-                  pricesCount: prices.length,
-                  sellersCount: sellers.length,
-                  openEstimate: () {
+                  goEstimate: () {
                     setState(() => index = 1);
                   },
-                  openPrices: () {
+                  goPrices: () {
                     setState(() => index = 2);
                   },
-                  openMarket: () {
+                  goMarket: () {
                     setState(() => index = 3);
                   },
                 ),
-                EstimatePage(
-                  items: estimates,
-                  onAdd: addEstimate,
-                  onDelete: deleteEstimate,
-                ),
-                PricesPage(
-                  prices: prices,
-                  onAdd: addPrice,
-                  onDelete: deletePrice,
-                ),
-                MarketPage(
-                  sellers: sellers,
-                  onAdd: addSeller,
-                  onDelete: deleteSeller,
-                ),
-                ProfilePage(
-                  estimateTotal: estimateTotal,
-                  onClear: clearAllData,
-                ),
+                const EstimatePage(),
+                const PricesPage(),
+                const MarketPage(),
+                const ProfilePage(),
               ];
 
               return Scaffold(
@@ -202,537 +403,140 @@ jobs:
                   index: index,
                   children: pages,
                 ),
-                bottomNavigationBar: NavigationBar(
+                bottomNavigationBar:
+                    NavigationBar(
                   selectedIndex: index,
-                  onDestinationSelected: (value) {
-                    setState(() {
-                      index = value;
-                    });
+                  onDestinationSelected:
+                      (value) {
+                    setState(
+                      () => index = value,
+                    );
                   },
                   destinations: const [
                     NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home),
+                      icon: Icon(
+                        Icons.home_outlined,
+                      ),
+                      selectedIcon:
+                          Icon(Icons.home),
                       label: 'Асосӣ',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.calculate_outlined),
-                      selectedIcon: Icon(Icons.calculate),
+                      icon: Icon(
+                        Icons
+                            .calculate_outlined,
+                      ),
+                      selectedIcon:
+                          Icon(Icons.calculate),
                       label: 'Смета',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.price_check_outlined),
-                      selectedIcon: Icon(Icons.price_check),
+                      icon: Icon(
+                        Icons
+                            .price_check_outlined,
+                      ),
+                      selectedIcon:
+                          Icon(
+                        Icons.price_check,
+                      ),
                       label: 'Нархҳо',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.storefront_outlined),
-                      selectedIcon: Icon(Icons.storefront),
+                      icon: Icon(
+                        Icons
+                            .storefront_outlined,
+                      ),
+                      selectedIcon:
+                          Icon(
+                        Icons.storefront,
+                      ),
                       label: 'Маркет',
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
+                      icon: Icon(
+                        Icons.person_outline,
+                      ),
+                      selectedIcon:
+                          Icon(Icons.person),
                       label: 'Профил',
                     ),
                   ],
                 ),
               );
             }
-
-            Future<void> addEstimate() async {
-              final name = TextEditingController();
-              final quantity = TextEditingController();
-              final unit = TextEditingController(text: 'дона');
-              final price = TextEditingController();
-
-              final result =
-                  await showDialog<Map<String, dynamic>>(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Иловаи смета'),
-                    content: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextField(
-                            controller: name,
-                            decoration: const InputDecoration(
-                              labelText: 'Номи кор ё материал',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: quantity,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Миқдор',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: unit,
-                            decoration: const InputDecoration(
-                              labelText: 'Воҳид',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: price,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Нархи 1 воҳид, сомонӣ',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Бекор кардан'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          final q = double.tryParse(
-                            quantity.text.replaceAll(',', '.'),
-                          );
-                          final p = double.tryParse(
-                            price.text.replaceAll(',', '.'),
-                          );
-
-                          if (name.text.trim().isEmpty ||
-                              q == null ||
-                              p == null ||
-                              q < 0 ||
-                              p < 0) {
-                            return;
-                          }
-
-                          Navigator.pop(
-                            context,
-                            {
-                              'name': name.text.trim(),
-                              'quantity': q,
-                              'unit': unit.text.trim().isEmpty
-                                  ? 'дона'
-                                  : unit.text.trim(),
-                              'price': p,
-                            },
-                          );
-                        },
-                        child: const Text('Илова кардан'),
-                      ),
-                    ],
-                  );
-                },
-              );
-
-              if (result != null) {
-                setState(() {
-                  estimates.add(result);
-                });
-                await saveData();
-              }
-            }
-
-            Future<void> deleteEstimate(int i) async {
-              setState(() {
-                estimates.removeAt(i);
-              });
-              await saveData();
-            }
-
-            Future<void> addPrice() async {
-              final name = TextEditingController();
-              final price = TextEditingController();
-              final city = TextEditingController(text: 'Душанбе');
-              final unit = TextEditingController(text: 'дона');
-
-              final result =
-                  await showDialog<Map<String, dynamic>>(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Нархи нав'),
-                    content: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextField(
-                            controller: name,
-                            decoration: const InputDecoration(
-                              labelText: 'Материал',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: price,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Нарх, сомонӣ',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: unit,
-                            decoration: const InputDecoration(
-                              labelText: 'Воҳид',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: city,
-                            decoration: const InputDecoration(
-                              labelText: 'Шаҳр / ноҳия',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Бекор кардан'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          final p = double.tryParse(
-                            price.text.replaceAll(',', '.'),
-                          );
-
-                          if (name.text.trim().isEmpty ||
-                              p == null ||
-                              p < 0) {
-                            return;
-                          }
-
-                          Navigator.pop(
-                            context,
-                            {
-                              'name': name.text.trim(),
-                              'price': p,
-                              'unit': unit.text.trim(),
-                              'city': city.text.trim(),
-                            },
-                          );
-                        },
-                        child: const Text('Сабт кардан'),
-                      ),
-                    ],
-                  );
-                },
-              );
-
-              if (result != null) {
-                setState(() {
-                  prices.add(result);
-                });
-                await saveData();
-              }
-            }
-
-            Future<void> deletePrice(int i) async {
-              setState(() {
-                prices.removeAt(i);
-              });
-              await saveData();
-            }
-
-            Future<void> addSeller() async {
-              final store = TextEditingController();
-              final phone = TextEditingController(text: '+992');
-              final city = TextEditingController(text: 'Душанбе');
-              final category = TextEditingController();
-
-              final result =
-                  await showDialog<Map<String, dynamic>>(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Фурӯшандаи нав'),
-                    content: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextField(
-                            controller: store,
-                            decoration: const InputDecoration(
-                              labelText: 'Номи мағоза',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: phone,
-                            keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
-                              labelText: 'Телефон',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: city,
-                            decoration: const InputDecoration(
-                              labelText: 'Шаҳр / ноҳия',
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: category,
-                            decoration: const InputDecoration(
-                              labelText: 'Категорияи мол',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Бекор кардан'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          if (store.text.trim().isEmpty) {
-                            return;
-                          }
-
-                          Navigator.pop(
-                            context,
-                            {
-                              'store': store.text.trim(),
-                              'phone': phone.text.trim(),
-                              'city': city.text.trim(),
-                              'category': category.text.trim(),
-                            },
-                          );
-                        },
-                        child: const Text('Илова кардан'),
-                      ),
-                    ],
-                  );
-                },
-              );
-
-              if (result != null) {
-                setState(() {
-                  sellers.add(result);
-                });
-                await saveData();
-              }
-            }
-
-            Future<void> deleteSeller(int i) async {
-              setState(() {
-                sellers.removeAt(i);
-              });
-              await saveData();
-            }
-
-            Future<void> clearAllData() async {
-              final yes = await showDialog<bool>(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text('Тоза кардани маълумот'),
-                    content: const Text(
-                      'Ҳамаи смета, нарх ва фурӯшандаҳо тоза мешаванд.',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context, false);
-                        },
-                        child: const Text('Не'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          Navigator.pop(context, true);
-                        },
-                        child: const Text('Ҳа'),
-                      ),
-                    ],
-                  );
-                },
-              );
-
-              if (yes == true) {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-
-                setState(() {
-                  estimates.clear();
-                  prices.clear();
-                  sellers.clear();
-                });
-              }
-            }
           }
 
-          class DashboardPage extends StatelessWidget {
+          class DashboardPage
+              extends StatefulWidget {
             const DashboardPage({
               super.key,
-              required this.estimateTotal,
-              required this.estimatesCount,
-              required this.pricesCount,
-              required this.sellersCount,
-              required this.openEstimate,
-              required this.openPrices,
-              required this.openMarket,
+              required this.goEstimate,
+              required this.goPrices,
+              required this.goMarket,
             });
 
-            final double estimateTotal;
-            final int estimatesCount;
-            final int pricesCount;
-            final int sellersCount;
-            final VoidCallback openEstimate;
-            final VoidCallback openPrices;
-            final VoidCallback openMarket;
+            final VoidCallback goEstimate;
+            final VoidCallback goPrices;
+            final VoidCallback goMarket;
 
             @override
-            Widget build(BuildContext context) {
-              return ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(
-                      22,
-                      65,
-                      22,
-                      30,
-                    ),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF123A73),
-                          Color(0xFF2865A8),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(32),
-                        bottomRight: Radius.circular(32),
-                      ),
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'SMETA TJ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Ҳисоби дуруст. Сохтмони босифат. Тоҷикистон обод.',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Арзиши умумии смета',
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  '${estimateTotal.toStringAsFixed(2)} сомонӣ',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 27,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _ActionCard(
-                          icon: Icons.calculate_outlined,
-                          title: 'Сметаи ман',
-                          subtitle:
-                              '$estimatesCount позиция',
-                          onTap: openEstimate,
-                        ),
-                        _ActionCard(
-                          icon: Icons.price_check_outlined,
-                          title: 'Нархҳои бозор',
-                          subtitle:
-                              '$pricesCount нарх сабт шудааст',
-                          onTap: openPrices,
-                        ),
-                        _ActionCard(
-                          icon: Icons.storefront_outlined,
-                          title: 'Фурӯшандагон',
-                          subtitle:
-                              '$sellersCount фурӯшанда',
-                          onTap: openMarket,
-                        ),
-                        const _AiCard(),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }
+            State<DashboardPage> createState() =>
+                _DashboardPageState();
           }
 
-          class _ActionCard extends StatelessWidget {
-            const _ActionCard({
-              required this.icon,
-              required this.title,
-              required this.subtitle,
-              required this.onTap,
-            });
-
-            final IconData icon;
-            final String title;
-            final String subtitle;
-            final VoidCallback onTap;
+          class _DashboardPageState
+              extends State<DashboardPage> {
+            bool? online;
 
             @override
-            Widget build(BuildContext context) {
+            void initState() {
+              super.initState();
+              checkServer();
+            }
+
+            Future<void> checkServer() async {
+              try {
+                await supabase
+                    .from('supplier_products')
+                    .select('id')
+                    .limit(1);
+
+                if (mounted) {
+                  setState(
+                    () => online = true,
+                  );
+                }
+              } catch (_) {
+                if (mounted) {
+                  setState(
+                    () => online = false,
+                  );
+                }
+              }
+            }
+
+            Widget menuCard({
+              required IconData icon,
+              required String title,
+              required String subtitle,
+              required VoidCallback onTap,
+            }) {
               return Card(
-                margin: const EdgeInsets.only(bottom: 10),
+                margin: const EdgeInsets.only(
+                  bottom: 12,
+                ),
                 child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
+                  contentPadding:
+                      const EdgeInsets.all(18),
                   leading: CircleAvatar(
                     child: Icon(icon),
                   ),
                   title: Text(
                     title,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
+                      fontSize: 19,
+                      fontWeight:
+                          FontWeight.bold,
                     ),
                   ),
                   subtitle: Text(subtitle),
@@ -743,554 +547,60 @@ jobs:
                 ),
               );
             }
-          }
-
-          class _AiCard extends StatefulWidget {
-            const _AiCard();
-
-            @override
-            State<_AiCard> createState() => _AiCardState();
-          }
-
-          class _AiCardState extends State<_AiCard> {
-            final question = TextEditingController();
-            String answer = '';
-
-            void ask() {
-              final q = question.text.toLowerCase();
-
-              if (q.trim().isEmpty) {
-                return;
-              }
-
-              if (q.contains('фундамент') ||
-                  q.contains('арматур') ||
-                  q.contains('колон') ||
-                  q.contains('плита') ||
-                  q.contains('ригел')) {
-                answer =
-                    'Ин масъала ба конструксияи борбардор вобаста аст. '
-                    'Андоза, арматура ё маркаи бетонро бе ҳисоби муҳандисӣ тағйир надиҳед.';
-              } else if (q.contains('нарх')) {
-                answer =
-                    'Нархҳоро дар қисми «Нархҳо» сабт кунед. '
-                    'Баъд метавонед арзиши сметаро аз рӯи нархи воқеии худ ҳисоб кунед.';
-              } else if (q.contains('сарфа') ||
-                  q.contains('арзон')) {
-                answer =
-                    'Барои сарфа аввал талафоти материал, доставка, '
-                    'нархи якчанд фурӯшанда ва корҳои ғайриконструктивиро муқоиса кунед.';
-              } else {
-                answer =
-                    'AI Engineer ҳоло дар режими офлайн аст. '
-                    'Барои ҳисоб маълумоти смета ва нархҳоро истифода баред.';
-              }
-
-              setState(() {});
-            }
 
             @override
             Widget build(BuildContext context) {
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.auto_awesome),
-                          SizedBox(width: 8),
-                          Text(
-                            'AI Engineer — Offline',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 17,
-                            ),
-                          ),
+              return ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.fromLTRB(
+                      24,
+                      60,
+                      24,
+                      30,
+                    ),
+                    decoration:
+                        const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF123A73),
+                          Color(0xFF2864A8),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: question,
-                        decoration: const InputDecoration(
-                          labelText: 'Савол нависед',
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      FilledButton(
-                        onPressed: ask,
-                        child: const Text('Санҷидан'),
-                      ),
-                      if (answer.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text(answer),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }
-          }
-
-          class EstimatePage extends StatelessWidget {
-            const EstimatePage({
-              super.key,
-              required this.items,
-              required this.onAdd,
-              required this.onDelete,
-            });
-
-            final List<Map<String, dynamic>> items;
-            final Future<void> Function() onAdd;
-            final Future<void> Function(int) onDelete;
-
-            @override
-            Widget build(BuildContext context) {
-              final total = items.fold<double>(
-                0,
-                (sum, item) {
-                  final q =
-                      (item['quantity'] as num?)?.toDouble() ?? 0;
-                  final p =
-                      (item['price'] as num?)?.toDouble() ?? 0;
-                  return sum + q * p;
-                },
-              );
-
-              return Scaffold(
-                appBar: AppBar(
-                  title: const Text('Смета'),
-                ),
-                floatingActionButton: FloatingActionButton.extended(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Илова'),
-                ),
-                body: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Ҷамъ'),
-                            Text(
-                              '${total.toStringAsFixed(2)} сомонӣ',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 25,
-                              ),
-                            ),
-                          ],
-                        ),
+                      borderRadius:
+                          BorderRadius.vertical(
+                        bottom:
+                            Radius.circular(40),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    if (items.isEmpty)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text(
-                            'Ҳоло смета холӣ аст. Тугмаи «Илова»-ро пахш кунед.',
-                          ),
-                        ),
-                      ),
-                    ...items.asMap().entries.map(
-                      (entry) {
-                        final i = entry.key;
-                        final item = entry.value;
-
-                        final q =
-                            (item['quantity'] as num).toDouble();
-                        final p =
-                            (item['price'] as num).toDouble();
-
-                        return Card(
-                          child: ListTile(
-                            title: Text(
-                              item['name'].toString(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '$q ${item['unit']} × ${p.toStringAsFixed(2)} сомонӣ',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${(q * p).toStringAsFixed(2)} с.',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    onDelete(i);
-                                  },
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 90),
-                  ],
-                ),
-              );
-            }
-          }
-
-          class PricesPage extends StatelessWidget {
-            const PricesPage({
-              super.key,
-              required this.prices,
-              required this.onAdd,
-              required this.onDelete,
-            });
-
-            final List<Map<String, dynamic>> prices;
-            final Future<void> Function() onAdd;
-            final Future<void> Function(int) onDelete;
-
-            @override
-            Widget build(BuildContext context) {
-              double min = 0;
-              double max = 0;
-              double avg = 0;
-
-              if (prices.isNotEmpty) {
-                final values = prices
-                    .map(
-                      (e) => (e['price'] as num).toDouble(),
-                    )
-                    .toList();
-
-                min = values.reduce(
-                  (a, b) => a < b ? a : b,
-                );
-                max = values.reduce(
-                  (a, b) => a > b ? a : b,
-                );
-                avg =
-                    values.reduce((a, b) => a + b) /
-                        values.length;
-              }
-
-              return Scaffold(
-                appBar: AppBar(
-                  title: const Text('Нархҳо'),
-                ),
-                floatingActionButton: FloatingActionButton.extended(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Нарх'),
-                ),
-                body: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Row(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _StatBox(
-                            title: 'MIN',
-                            value: min,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatBox(
-                            title: 'AVG',
-                            value: avg,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatBox(
-                            title: 'MAX',
-                            value: max,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    if (prices.isEmpty)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text(
-                            'Ҳоло нарх сабт нашудааст.',
-                          ),
-                        ),
-                      ),
-                    ...prices.asMap().entries.map(
-                      (entry) {
-                        final i = entry.key;
-                        final item = entry.value;
-
-                        return Card(
-                          child: ListTile(
-                            title: Text(
-                              item['name'].toString(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '${item['city']} • ${item['unit']}',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '${(item['price'] as num).toStringAsFixed(2)} с.',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    onDelete(i);
-                                  },
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 90),
-                  ],
-                ),
-              );
-            }
-          }
-
-          class _StatBox extends StatelessWidget {
-            const _StatBox({
-              required this.title,
-              required this.value,
-            });
-
-            final String title;
-            final double value;
-
-            @override
-            Widget build(BuildContext context) {
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 18,
-                    horizontal: 8,
-                  ),
-                  child: Column(
-                    children: [
-                      Text(title),
-                      const SizedBox(height: 4),
-                      Text(
-                        value.toStringAsFixed(0),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-          }
-
-          class MarketPage extends StatelessWidget {
-            const MarketPage({
-              super.key,
-              required this.sellers,
-              required this.onAdd,
-              required this.onDelete,
-            });
-
-            final List<Map<String, dynamic>> sellers;
-            final Future<void> Function() onAdd;
-            final Future<void> Function(int) onDelete;
-
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                appBar: AppBar(
-                  title: const Text('Маркет'),
-                ),
-                floatingActionButton: FloatingActionButton.extended(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.person_add_alt),
-                  label: const Text('Фурӯшанда'),
-                ),
-                body: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    if (sellers.isEmpty)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text(
-                            'Ҳоло фурӯшанда нест. Фурӯшандаи аввалро илова кунед.',
-                          ),
-                        ),
-                      ),
-                    ...sellers.asMap().entries.map(
-                      (entry) {
-                        final i = entry.key;
-                        final seller = entry.value;
-
-                        return Card(
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              child: Icon(
-                                Icons.storefront,
-                              ),
-                            ),
-                            title: Text(
-                              seller['store'].toString(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '${seller['city']}\n'
-                              '${seller['category']}\n'
-                              '${seller['phone']}',
-                            ),
-                            isThreeLine: true,
-                            trailing: IconButton(
-                              onPressed: () {
-                                onDelete(i);
-                              },
-                              icon: const Icon(
-                                Icons.delete_outline,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 90),
-                  ],
-                ),
-              );
-            }
-          }
-
-          class ProfilePage extends StatelessWidget {
-            const ProfilePage({
-              super.key,
-              required this.estimateTotal,
-              required this.onClear,
-            });
-
-            final double estimateTotal;
-            final Future<void> Function() onClear;
-
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                appBar: AppBar(
-                  title: const Text('Профил'),
-                ),
-                body: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    const Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          child: Icon(Icons.engineering),
-                        ),
-                        title: Text(
+                        const Text(
                           'SMETA TJ',
                           style: TextStyle(
-                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight:
+                                FontWeight.bold,
                           ),
                         ),
-                        subtitle: Text(
-                          'Alpha — Offline',
+                        const SizedBox(
+                          height: 8,
                         ),
-                      ),
-                    ),
-                    Card(
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.calculate_outlined,
-                        ),
-                        title: const Text(
-                          'Арзиши умумии смета',
-                        ),
-                        trailing: Text(
-                          '${estimateTotal.toStringAsFixed(0)} с.',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
+                        const Text(
+                          'Ҳисоби дуруст. Сохтмони босифат. Тоҷикистон обод.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
                           ),
                         ),
-                      ),
-                    ),
-                    const Card(
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.cloud_off_outlined,
+                        const SizedBox(
+                          height: 16,
                         ),
-                        title: Text('Сервер'),
-                        subtitle: Text(
-                          'Ҳоло offline. Backend баъд пайваст мешавад.',
-                        ),
-                      ),
-                    ),
-                    const Card(
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.info_outline,
-                        ),
-                        title: Text('Версия'),
-                        trailing: Text('0.1 Working'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: onClear,
-                      icon: const Icon(
-                        Icons.delete_forever_outlined,
-                      ),
-                      label: const Text(
-                        'Ҳамаи маълумотро тоза кардан',
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-          }
-          DART
-
-          sed -i 's/tj\.smetatj\.smeta_tj/tj.smetatj.app/g' android/app/build.gradle.kts || true
-
-          grep -RIl 'package tj.smetatj.smeta_tj' android/app/src/main/kotlin | xargs -r sed -i 's/package tj\.smetatj\.smeta_tj/package tj.smetatj.app/g'
-
-          sed -i 's/android:label="smeta_tj"/android:label="SMETA TJ"/g' android/app/src/main/AndroidManifest.xml
-
-          flutter pub get
-          flutter analyze
-          flutter build apk --debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: SMETA-TJ-WORKING-APK
-          path: app/build/app/outputs/flutter-apk/app-debug.apk
-          if-no-files-found: error
+                        Row(
+                          children: [
+                       

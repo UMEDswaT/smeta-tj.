@@ -1,0 +1,229 @@
+name: Build SMETA TJ APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Create SMETA TJ
+        run: |
+          flutter create --org tj.smetatj --project-name smeta_tj app
+          cd app
+
+          cat > lib/main.dart <<'DART'
+          import 'package:flutter/material.dart';
+
+          void main() {
+            runApp(const SmetaTJ());
+          }
+
+          class SmetaTJ extends StatelessWidget {
+            const SmetaTJ({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'SMETA TJ',
+                theme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: const Color(0xFF123A73),
+                  ),
+                  scaffoldBackgroundColor: const Color(0xFFF3F5F7),
+                ),
+                home: const HomePage(),
+              );
+            }
+          }
+
+          class HomePage extends StatefulWidget {
+            const HomePage({super.key});
+
+            @override
+            State<HomePage> createState() => _HomePageState();
+          }
+
+          class _HomePageState extends State<HomePage> {
+            int index = 0;
+
+            @override
+            Widget build(BuildContext context) {
+              final pages = [
+                const Dashboard(),
+                const Center(child: Text('Смета')),
+                const Center(child: Text('Нархҳо')),
+                const Center(child: Text('Маркет')),
+                const Center(child: Text('Профил')),
+              ];
+
+              return Scaffold(
+                body: pages[index],
+                bottomNavigationBar: NavigationBar(
+                  selectedIndex: index,
+                  onDestinationSelected: (value) {
+                    setState(() => index = value);
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      label: 'Асосӣ',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.calculate_outlined),
+                      label: 'Смета',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.price_check_outlined),
+                      label: 'Нархҳо',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.storefront_outlined),
+                      label: 'Маркет',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outline),
+                      label: 'Профил',
+                    ),
+                  ],
+                ),
+              );
+            }
+          }
+
+          class Dashboard extends StatelessWidget {
+            const Dashboard({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(22, 65, 22, 28),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF123A73),
+                          Color(0xFF23599B),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(30),
+                        bottomRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SMETA TJ',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Ҳисоби дуруст. Сохтмони босифат. Тоҷикистон обод.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Панели асосӣ',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _card(
+                          Icons.calculate,
+                          'Сметаи нав',
+                          'Ҳисоби корҳои сохтмонӣ',
+                        ),
+                        _card(
+                          Icons.auto_awesome,
+                          'AI Engineer',
+                          'Санҷиш ва таҳлили смета',
+                        ),
+                        _card(
+                          Icons.price_check,
+                          'Нархҳои бозор',
+                          'MIN • AVG • MAX',
+                        ),
+                        _card(
+                          Icons.storefront,
+                          'Фурӯшандагон',
+                          'Мол, нарх ва пешниҳодҳо',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            Widget _card(
+              IconData icon,
+              String title,
+              String subtitle,
+            ) {
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: CircleAvatar(
+                    child: Icon(icon),
+                  ),
+                  title: Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: Text(subtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              );
+            }
+          }
+          DART
+
+          sed -i 's/tj\.smetatj\.smeta_tj/tj.smetatj.app/g' android/app/build.gradle.kts || true
+          grep -RIl 'package tj.smetatj.smeta_tj' android/app/src/main/kotlin | xargs -r sed -i 's/package tj\.smetatj\.smeta_tj/package tj.smetatj.app/g'
+          sed -i 's/android:label="smeta_tj"/android:label="SMETA TJ"/g' android/app/src/main/AndroidManifest.xml
+
+          flutter pub get
+          flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SMETA-TJ-APK
+          path: app/build/app/outputs/flutter-apk/app-debug.apk

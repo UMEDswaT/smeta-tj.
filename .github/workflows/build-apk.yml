@@ -19,15 +19,1271 @@ jobs:
         with:
           channel: stable
 
-      - name: Create working SMETA TJ
+      - name: Create SMETA TJ
         run: |
           flutter create --org tj.smetatj --project-name smeta_tj app
           cd app
+
           flutter pub add shared_preferences
-          printf '%s' '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' | base64 -d | gzip -d > lib/main.dart
+
+          rm -f test/widget_test.dart
+
+          cat > lib/main.dart <<'DART'
+          import 'dart:convert';
+          import 'package:flutter/material.dart';
+          import 'package:shared_preferences/shared_preferences.dart';
+
+          void main() {
+            runApp(const SmetaTJApp());
+          }
+
+          class SmetaTJApp extends StatelessWidget {
+            const SmetaTJApp({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'SMETA TJ',
+                theme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: const Color(0xFF123A73),
+                  ),
+                  scaffoldBackgroundColor: const Color(0xFFF4F6F8),
+                  inputDecorationTheme: const InputDecorationTheme(
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                home: const HomePage(),
+              );
+            }
+          }
+
+          class HomePage extends StatefulWidget {
+            const HomePage({super.key});
+
+            @override
+            State<HomePage> createState() => _HomePageState();
+          }
+
+          class _HomePageState extends State<HomePage> {
+            int index = 0;
+            bool loading = true;
+
+            List<Map<String, dynamic>> estimates = [];
+            List<Map<String, dynamic>> prices = [];
+            List<Map<String, dynamic>> sellers = [];
+
+            @override
+            void initState() {
+              super.initState();
+              loadData();
+            }
+
+            Future<void> loadData() async {
+              final prefs = await SharedPreferences.getInstance();
+
+              estimates = _decodeList(
+                prefs.getString('estimates'),
+              );
+              prices = _decodeList(
+                prefs.getString('prices'),
+              );
+              sellers = _decodeList(
+                prefs.getString('sellers'),
+              );
+
+              if (mounted) {
+                setState(() {
+                  loading = false;
+                });
+              }
+            }
+
+            List<Map<String, dynamic>> _decodeList(String? raw) {
+              if (raw == null || raw.isEmpty) {
+                return [];
+              }
+
+              try {
+                final data = jsonDecode(raw);
+                if (data is List) {
+                  return data
+                      .map(
+                        (e) => Map<String, dynamic>.from(e as Map),
+                      )
+                      .toList();
+                }
+              } catch (_) {}
+
+              return [];
+            }
+
+            Future<void> saveData() async {
+              final prefs = await SharedPreferences.getInstance();
+
+              await prefs.setString(
+                'estimates',
+                jsonEncode(estimates),
+              );
+              await prefs.setString(
+                'prices',
+                jsonEncode(prices),
+              );
+              await prefs.setString(
+                'sellers',
+                jsonEncode(sellers),
+              );
+            }
+
+            double get estimateTotal {
+              return estimates.fold<double>(
+                0,
+                (sum, item) {
+                  final quantity =
+                      (item['quantity'] as num?)?.toDouble() ?? 0;
+                  final price =
+                      (item['price'] as num?)?.toDouble() ?? 0;
+                  return sum + quantity * price;
+                },
+              );
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              if (loading) {
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              final pages = [
+                DashboardPage(
+                  estimateTotal: estimateTotal,
+                  estimatesCount: estimates.length,
+                  pricesCount: prices.length,
+                  sellersCount: sellers.length,
+                  openEstimate: () {
+                    setState(() => index = 1);
+                  },
+                  openPrices: () {
+                    setState(() => index = 2);
+                  },
+                  openMarket: () {
+                    setState(() => index = 3);
+                  },
+                ),
+                EstimatePage(
+                  items: estimates,
+                  onAdd: addEstimate,
+                  onDelete: deleteEstimate,
+                ),
+                PricesPage(
+                  prices: prices,
+                  onAdd: addPrice,
+                  onDelete: deletePrice,
+                ),
+                MarketPage(
+                  sellers: sellers,
+                  onAdd: addSeller,
+                  onDelete: deleteSeller,
+                ),
+                ProfilePage(
+                  estimateTotal: estimateTotal,
+                  onClear: clearAllData,
+                ),
+              ];
+
+              return Scaffold(
+                body: IndexedStack(
+                  index: index,
+                  children: pages,
+                ),
+                bottomNavigationBar: NavigationBar(
+                  selectedIndex: index,
+                  onDestinationSelected: (value) {
+                    setState(() {
+                      index = value;
+                    });
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: 'Асосӣ',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.calculate_outlined),
+                      selectedIcon: Icon(Icons.calculate),
+                      label: 'Смета',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.price_check_outlined),
+                      selectedIcon: Icon(Icons.price_check),
+                      label: 'Нархҳо',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.storefront_outlined),
+                      selectedIcon: Icon(Icons.storefront),
+                      label: 'Маркет',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: 'Профил',
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            Future<void> addEstimate() async {
+              final name = TextEditingController();
+              final quantity = TextEditingController();
+              final unit = TextEditingController(text: 'дона');
+              final price = TextEditingController();
+
+              final result =
+                  await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Иловаи смета'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: name,
+                            decoration: const InputDecoration(
+                              labelText: 'Номи кор ё материал',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: quantity,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Миқдор',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: unit,
+                            decoration: const InputDecoration(
+                              labelText: 'Воҳид',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: price,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Нархи 1 воҳид, сомонӣ',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Бекор кардан'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          final q = double.tryParse(
+                            quantity.text.replaceAll(',', '.'),
+                          );
+                          final p = double.tryParse(
+                            price.text.replaceAll(',', '.'),
+                          );
+
+                          if (name.text.trim().isEmpty ||
+                              q == null ||
+                              p == null ||
+                              q < 0 ||
+                              p < 0) {
+                            return;
+                          }
+
+                          Navigator.pop(
+                            context,
+                            {
+                              'name': name.text.trim(),
+                              'quantity': q,
+                              'unit': unit.text.trim().isEmpty
+                                  ? 'дона'
+                                  : unit.text.trim(),
+                              'price': p,
+                            },
+                          );
+                        },
+                        child: const Text('Илова кардан'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (result != null) {
+                setState(() {
+                  estimates.add(result);
+                });
+                await saveData();
+              }
+            }
+
+            Future<void> deleteEstimate(int i) async {
+              setState(() {
+                estimates.removeAt(i);
+              });
+              await saveData();
+            }
+
+            Future<void> addPrice() async {
+              final name = TextEditingController();
+              final price = TextEditingController();
+              final city = TextEditingController(text: 'Душанбе');
+              final unit = TextEditingController(text: 'дона');
+
+              final result =
+                  await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Нархи нав'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: name,
+                            decoration: const InputDecoration(
+                              labelText: 'Материал',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: price,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Нарх, сомонӣ',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: unit,
+                            decoration: const InputDecoration(
+                              labelText: 'Воҳид',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: city,
+                            decoration: const InputDecoration(
+                              labelText: 'Шаҳр / ноҳия',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Бекор кардан'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          final p = double.tryParse(
+                            price.text.replaceAll(',', '.'),
+                          );
+
+                          if (name.text.trim().isEmpty ||
+                              p == null ||
+                              p < 0) {
+                            return;
+                          }
+
+                          Navigator.pop(
+                            context,
+                            {
+                              'name': name.text.trim(),
+                              'price': p,
+                              'unit': unit.text.trim(),
+                              'city': city.text.trim(),
+                            },
+                          );
+                        },
+                        child: const Text('Сабт кардан'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (result != null) {
+                setState(() {
+                  prices.add(result);
+                });
+                await saveData();
+              }
+            }
+
+            Future<void> deletePrice(int i) async {
+              setState(() {
+                prices.removeAt(i);
+              });
+              await saveData();
+            }
+
+            Future<void> addSeller() async {
+              final store = TextEditingController();
+              final phone = TextEditingController(text: '+992');
+              final city = TextEditingController(text: 'Душанбе');
+              final category = TextEditingController();
+
+              final result =
+                  await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Фурӯшандаи нав'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: store,
+                            decoration: const InputDecoration(
+                              labelText: 'Номи мағоза',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: phone,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'Телефон',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: city,
+                            decoration: const InputDecoration(
+                              labelText: 'Шаҳр / ноҳия',
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: category,
+                            decoration: const InputDecoration(
+                              labelText: 'Категорияи мол',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Бекор кардан'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          if (store.text.trim().isEmpty) {
+                            return;
+                          }
+
+                          Navigator.pop(
+                            context,
+                            {
+                              'store': store.text.trim(),
+                              'phone': phone.text.trim(),
+                              'city': city.text.trim(),
+                              'category': category.text.trim(),
+                            },
+                          );
+                        },
+                        child: const Text('Илова кардан'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (result != null) {
+                setState(() {
+                  sellers.add(result);
+                });
+                await saveData();
+              }
+            }
+
+            Future<void> deleteSeller(int i) async {
+              setState(() {
+                sellers.removeAt(i);
+              });
+              await saveData();
+            }
+
+            Future<void> clearAllData() async {
+              final yes = await showDialog<bool>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Тоза кардани маълумот'),
+                    content: const Text(
+                      'Ҳамаи смета, нарх ва фурӯшандаҳо тоза мешаванд.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context, false);
+                        },
+                        child: const Text('Не'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(context, true);
+                        },
+                        child: const Text('Ҳа'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (yes == true) {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+
+                setState(() {
+                  estimates.clear();
+                  prices.clear();
+                  sellers.clear();
+                });
+              }
+            }
+          }
+
+          class DashboardPage extends StatelessWidget {
+            const DashboardPage({
+              super.key,
+              required this.estimateTotal,
+              required this.estimatesCount,
+              required this.pricesCount,
+              required this.sellersCount,
+              required this.openEstimate,
+              required this.openPrices,
+              required this.openMarket,
+            });
+
+            final double estimateTotal;
+            final int estimatesCount;
+            final int pricesCount;
+            final int sellersCount;
+            final VoidCallback openEstimate;
+            final VoidCallback openPrices;
+            final VoidCallback openMarket;
+
+            @override
+            Widget build(BuildContext context) {
+              return ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(
+                      22,
+                      65,
+                      22,
+                      30,
+                    ),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF123A73),
+                          Color(0xFF2865A8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(32),
+                        bottomRight: Radius.circular(32),
+                      ),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SMETA TJ',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Ҳисоби дуруст. Сохтмони босифат. Тоҷикистон обод.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Арзиши умумии смета',
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  '${estimateTotal.toStringAsFixed(2)} сомонӣ',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 27,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _ActionCard(
+                          icon: Icons.calculate_outlined,
+                          title: 'Сметаи ман',
+                          subtitle:
+                              '$estimatesCount позиция',
+                          onTap: openEstimate,
+                        ),
+                        _ActionCard(
+                          icon: Icons.price_check_outlined,
+                          title: 'Нархҳои бозор',
+                          subtitle:
+                              '$pricesCount нарх сабт шудааст',
+                          onTap: openPrices,
+                        ),
+                        _ActionCard(
+                          icon: Icons.storefront_outlined,
+                          title: 'Фурӯшандагон',
+                          subtitle:
+                              '$sellersCount фурӯшанда',
+                          onTap: openMarket,
+                        ),
+                        const _AiCard(),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+          }
+
+          class _ActionCard extends StatelessWidget {
+            const _ActionCard({
+              required this.icon,
+              required this.title,
+              required this.subtitle,
+              required this.onTap,
+            });
+
+            final IconData icon;
+            final String title;
+            final String subtitle;
+            final VoidCallback onTap;
+
+            @override
+            Widget build(BuildContext context) {
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: CircleAvatar(
+                    child: Icon(icon),
+                  ),
+                  title: Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: Text(subtitle),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                  ),
+                  onTap: onTap,
+                ),
+              );
+            }
+          }
+
+          class _AiCard extends StatefulWidget {
+            const _AiCard();
+
+            @override
+            State<_AiCard> createState() => _AiCardState();
+          }
+
+          class _AiCardState extends State<_AiCard> {
+            final question = TextEditingController();
+            String answer = '';
+
+            void ask() {
+              final q = question.text.toLowerCase();
+
+              if (q.trim().isEmpty) {
+                return;
+              }
+
+              if (q.contains('фундамент') ||
+                  q.contains('арматур') ||
+                  q.contains('колон') ||
+                  q.contains('плита') ||
+                  q.contains('ригел')) {
+                answer =
+                    'Ин масъала ба конструксияи борбардор вобаста аст. '
+                    'Андоза, арматура ё маркаи бетонро бе ҳисоби муҳандисӣ тағйир надиҳед.';
+              } else if (q.contains('нарх')) {
+                answer =
+                    'Нархҳоро дар қисми «Нархҳо» сабт кунед. '
+                    'Баъд метавонед арзиши сметаро аз рӯи нархи воқеии худ ҳисоб кунед.';
+              } else if (q.contains('сарфа') ||
+                  q.contains('арзон')) {
+                answer =
+                    'Барои сарфа аввал талафоти материал, доставка, '
+                    'нархи якчанд фурӯшанда ва корҳои ғайриконструктивиро муқоиса кунед.';
+              } else {
+                answer =
+                    'AI Engineer ҳоло дар режими офлайн аст. '
+                    'Барои ҳисоб маълумоти смета ва нархҳоро истифода баред.';
+              }
+
+              setState(() {});
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.auto_awesome),
+                          SizedBox(width: 8),
+                          Text(
+                            'AI Engineer — Offline',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: question,
+                        decoration: const InputDecoration(
+                          labelText: 'Савол нависед',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton(
+                        onPressed: ask,
+                        child: const Text('Санҷидан'),
+                      ),
+                      if (answer.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(answer),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          class EstimatePage extends StatelessWidget {
+            const EstimatePage({
+              super.key,
+              required this.items,
+              required this.onAdd,
+              required this.onDelete,
+            });
+
+            final List<Map<String, dynamic>> items;
+            final Future<void> Function() onAdd;
+            final Future<void> Function(int) onDelete;
+
+            @override
+            Widget build(BuildContext context) {
+              final total = items.fold<double>(
+                0,
+                (sum, item) {
+                  final q =
+                      (item['quantity'] as num?)?.toDouble() ?? 0;
+                  final p =
+                      (item['price'] as num?)?.toDouble() ?? 0;
+                  return sum + q * p;
+                },
+              );
+
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Смета'),
+                ),
+                floatingActionButton: FloatingActionButton.extended(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Илова'),
+                ),
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Ҷамъ'),
+                            Text(
+                              '${total.toStringAsFixed(2)} сомонӣ',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 25,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (items.isEmpty)
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            'Ҳоло смета холӣ аст. Тугмаи «Илова»-ро пахш кунед.',
+                          ),
+                        ),
+                      ),
+                    ...items.asMap().entries.map(
+                      (entry) {
+                        final i = entry.key;
+                        final item = entry.value;
+
+                        final q =
+                            (item['quantity'] as num).toDouble();
+                        final p =
+                            (item['price'] as num).toDouble();
+
+                        return Card(
+                          child: ListTile(
+                            title: Text(
+                              item['name'].toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '$q ${item['unit']} × ${p.toStringAsFixed(2)} сомонӣ',
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${(q * p).toStringAsFixed(2)} с.',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+                                    onDelete(i);
+                                  },
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 90),
+                  ],
+                ),
+              );
+            }
+          }
+
+          class PricesPage extends StatelessWidget {
+            const PricesPage({
+              super.key,
+              required this.prices,
+              required this.onAdd,
+              required this.onDelete,
+            });
+
+            final List<Map<String, dynamic>> prices;
+            final Future<void> Function() onAdd;
+            final Future<void> Function(int) onDelete;
+
+            @override
+            Widget build(BuildContext context) {
+              double min = 0;
+              double max = 0;
+              double avg = 0;
+
+              if (prices.isNotEmpty) {
+                final values = prices
+                    .map(
+                      (e) => (e['price'] as num).toDouble(),
+                    )
+                    .toList();
+
+                min = values.reduce(
+                  (a, b) => a < b ? a : b,
+                );
+                max = values.reduce(
+                  (a, b) => a > b ? a : b,
+                );
+                avg =
+                    values.reduce((a, b) => a + b) /
+                        values.length;
+              }
+
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Нархҳо'),
+                ),
+                floatingActionButton: FloatingActionButton.extended(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Нарх'),
+                ),
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatBox(
+                            title: 'MIN',
+                            value: min,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatBox(
+                            title: 'AVG',
+                            value: avg,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatBox(
+                            title: 'MAX',
+                            value: max,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    if (prices.isEmpty)
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            'Ҳоло нарх сабт нашудааст.',
+                          ),
+                        ),
+                      ),
+                    ...prices.asMap().entries.map(
+                      (entry) {
+                        final i = entry.key;
+                        final item = entry.value;
+
+                        return Card(
+                          child: ListTile(
+                            title: Text(
+                              item['name'].toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${item['city']} • ${item['unit']}',
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${(item['price'] as num).toStringAsFixed(2)} с.',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+                                    onDelete(i);
+                                  },
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 90),
+                  ],
+                ),
+              );
+            }
+          }
+
+          class _StatBox extends StatelessWidget {
+            const _StatBox({
+              required this.title,
+              required this.value,
+            });
+
+            final String title;
+            final double value;
+
+            @override
+            Widget build(BuildContext context) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 18,
+                    horizontal: 8,
+                  ),
+                  child: Column(
+                    children: [
+                      Text(title),
+                      const SizedBox(height: 4),
+                      Text(
+                        value.toStringAsFixed(0),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          class MarketPage extends StatelessWidget {
+            const MarketPage({
+              super.key,
+              required this.sellers,
+              required this.onAdd,
+              required this.onDelete,
+            });
+
+            final List<Map<String, dynamic>> sellers;
+            final Future<void> Function() onAdd;
+            final Future<void> Function(int) onDelete;
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Маркет'),
+                ),
+                floatingActionButton: FloatingActionButton.extended(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.person_add_alt),
+                  label: const Text('Фурӯшанда'),
+                ),
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (sellers.isEmpty)
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            'Ҳоло фурӯшанда нест. Фурӯшандаи аввалро илова кунед.',
+                          ),
+                        ),
+                      ),
+                    ...sellers.asMap().entries.map(
+                      (entry) {
+                        final i = entry.key;
+                        final seller = entry.value;
+
+                        return Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(
+                                Icons.storefront,
+                              ),
+                            ),
+                            title: Text(
+                              seller['store'].toString(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${seller['city']}\n'
+                              '${seller['category']}\n'
+                              '${seller['phone']}',
+                            ),
+                            isThreeLine: true,
+                            trailing: IconButton(
+                              onPressed: () {
+                                onDelete(i);
+                              },
+                              icon: const Icon(
+                                Icons.delete_outline,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 90),
+                  ],
+                ),
+              );
+            }
+          }
+
+          class ProfilePage extends StatelessWidget {
+            const ProfilePage({
+              super.key,
+              required this.estimateTotal,
+              required this.onClear,
+            });
+
+            final double estimateTotal;
+            final Future<void> Function() onClear;
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Профил'),
+                ),
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    const Card(
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          child: Icon(Icons.engineering),
+                        ),
+                        title: Text(
+                          'SMETA TJ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Alpha — Offline',
+                        ),
+                      ),
+                    ),
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.calculate_outlined,
+                        ),
+                        title: const Text(
+                          'Арзиши умумии смета',
+                        ),
+                        trailing: Text(
+                          '${estimateTotal.toStringAsFixed(0)} с.',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Card(
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.cloud_off_outlined,
+                        ),
+                        title: Text('Сервер'),
+                        subtitle: Text(
+                          'Ҳоло offline. Backend баъд пайваст мешавад.',
+                        ),
+                      ),
+                    ),
+                    const Card(
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.info_outline,
+                        ),
+                        title: Text('Версия'),
+                        trailing: Text('0.1 Working'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: onClear,
+                      icon: const Icon(
+                        Icons.delete_forever_outlined,
+                      ),
+                      label: const Text(
+                        'Ҳамаи маълумотро тоза кардан',
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+          }
+          DART
+
           sed -i 's/tj\.smetatj\.smeta_tj/tj.smetatj.app/g' android/app/build.gradle.kts || true
+
           grep -RIl 'package tj.smetatj.smeta_tj' android/app/src/main/kotlin | xargs -r sed -i 's/package tj\.smetatj\.smeta_tj/package tj.smetatj.app/g'
+
           sed -i 's/android:label="smeta_tj"/android:label="SMETA TJ"/g' android/app/src/main/AndroidManifest.xml
+
           flutter pub get
           flutter analyze
           flutter build apk --debug

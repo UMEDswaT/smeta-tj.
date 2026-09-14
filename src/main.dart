@@ -741,4 +741,4 @@ class _ProjectsPageState extends State<ProjectsPage> {
         label: const Text('Объекти нав'),
       ),
       body: RefreshIndicator(
-        onRefresh: l
+        onRefresh: loadData,

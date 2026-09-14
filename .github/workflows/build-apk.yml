@@ -13,40 +13,52 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
 
-      - name: Build Online APK
+      - name: Create Flutter App
         env:
           SUPABASE_URL: ${{ secrets.SMETA_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SMETA_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           set -e
 
-          test -n "$SUPABASE_URL"
-          test -n "$SUPABASE_KEY"
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "SMETA_SUPABASE_URL is missing"
+            exit 1
+          fi
 
-          git show 6106d7a1f5596c84a21d0f5f3653c91caa923759:.github/workflows/build-apk.yml > /tmp/source.yml
+          if [ -z "$SUPABASE_KEY" ]; then
+            echo "SMETA_SUPABASE_PUBLISHABLE_KEY is missing"
+            exit 1
+          fi
 
-          flutter create --org tj.smetatj --project-name smeta_tj app
+          flutter create \
+            --org tj.smetatj \
+            --project-name smeta_tj \
+            app
+
           cd app
 
           flutter pub add supabase_flutter
+
           rm -f test/widget_test.dart
 
-          sed -n "/cat > lib\/main.dart <<'DART'/,/^[[:space:]]*DART[[:space:]]*$/p" /tmp/source.yml \
-            | sed '1d;$d;s/^          //' > lib/main.dart
-
-          test -s lib/main.dart
-          dart format lib/main.dart
+          cp ../src/main.dart lib/main.dart
 
           grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml || \
           sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+
+          sed -i 's/android:label="smeta_tj"/android:label="SMETA TJ"/g' \
+            android/app/src/main/AndroidManifest.xml
+
+          dart format lib/main.dart
+
+          flutter analyze
 
           flutter build apk --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
@@ -58,3 +70,4 @@ jobs:
           name: SMETA-TJ-ONLINE-APK
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+          retention-days: 14

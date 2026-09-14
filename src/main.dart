@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
 
+const authRedirectUrl = 'tj.smetatj.app://login-callback/';
+
 SupabaseClient get supabase => Supabase.instance.client;
 
 Future<void> main() async {
@@ -154,6 +156,11 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    if (!email.contains('@')) {
+      showMessage('Email нодуруст аст.');
+      return;
+    }
+
     if (password.length < 6) {
       showMessage(
         'Рамз бояд на кам аз 6 аломат бошад.',
@@ -170,19 +177,30 @@ class _LoginPageState extends State<LoginPage> {
         final result = await supabase.auth.signUp(
           email: email,
           password: password,
+          emailRedirectTo: authRedirectUrl,
         );
 
         if (!mounted) return;
 
         if (result.session == null) {
           showMessage(
-            'Сабти ном анҷом ёфт. Email-ро барои тасдиқ санҷед.',
+            'Сабти ном анҷом ёфт. Email-ро кушоед ва тасдиқ кунед.',
+          );
+        } else {
+          showMessage(
+            'Сабти ном муваффақ шуд.',
           );
         }
       } else {
         await supabase.auth.signInWithPassword(
           email: email,
           password: password,
+        );
+
+        if (!mounted) return;
+
+        showMessage(
+          'Воридшавӣ муваффақ шуд.',
         );
       }
     } on AuthException catch (e) {
@@ -254,12 +272,17 @@ class _LoginPageState extends State<LoginPage> {
                             ? 'Сабти номи корбар'
                             : 'Ворид шудан',
                         textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                        ),
                       ),
                       const SizedBox(height: 24),
                       TextField(
                         controller: emailController,
                         keyboardType:
                             TextInputType.emailAddress,
+                        textInputAction:
+                            TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Email',
                           prefixIcon: Icon(
@@ -271,6 +294,8 @@ class _LoginPageState extends State<LoginPage> {
                       TextField(
                         controller: passwordController,
                         obscureText: true,
+                        textInputAction:
+                            TextInputAction.done,
                         decoration: const InputDecoration(
                           labelText: 'Рамз',
                           prefixIcon: Icon(

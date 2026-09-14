@@ -279,16 +279,21 @@ class _MainPageState extends State<MainPage> {
   int index = 0;
 
   final pages = const [
-    DashboardPage(),
-    ProjectsPage(),
-  ];
+  DashboardPage(),
+  ProjectsPage(),
+  EstimatesPage(),
+];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          index == 0 ? 'SMETA TJ' : 'Объектҳо',
+  index == 0
+      ? 'SMETA TJ'
+      : index == 1
+          ? 'Объектҳо'
+          : 'Смета',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
@@ -315,17 +320,22 @@ class _MainPageState extends State<MainPage> {
           });
         },
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Асосӣ',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.apartment_outlined),
-            selectedIcon: Icon(Icons.apartment),
-            label: 'Объектҳо',
-          ),
-        ],
+  NavigationDestination(
+    icon: Icon(Icons.dashboard_outlined),
+    selectedIcon: Icon(Icons.dashboard),
+    label: 'Асосӣ',
+  ),
+  NavigationDestination(
+    icon: Icon(Icons.apartment_outlined),
+    selectedIcon: Icon(Icons.apartment),
+    label: 'Объектҳо',
+  ),
+  NavigationDestination(
+    icon: Icon(Icons.calculate_outlined),
+    selectedIcon: Icon(Icons.calculate),
+    label: 'Смета',
+  ),
+],
       ),
     );
   }
@@ -797,7 +807,298 @@ class _ProjectsPageState
 }
 
 // ======================================================
-// HELPERS
+// // ======================================================
+// ESTIMATES
+// ======================================================
+
+class EstimatesPage extends StatefulWidget {
+  const EstimatesPage({super.key});
+
+  @override
+  State<EstimatesPage> createState() => _EstimatesPageState();
+}
+
+class _EstimatesPageState extends State<EstimatesPage> {
+  List<Map<String, dynamic>> estimates = [];
+  List<Map<String, dynamic>> projects = [];
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final estimatesData = await supabase
+          .from('estimates')
+          .select()
+          .order('created_at', ascending: false);
+
+      final projectsData = await supabase
+          .from('projects')
+          .select('id,name')
+          .order('name');
+
+      if (!mounted) return;
+
+      setState(() {
+        estimates =
+            List<Map<String, dynamic>>.from(estimatesData);
+        projects =
+            List<Map<String, dynamic>>.from(projectsData);
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
+      });
+
+      showMsg(context, 'Хато: $e');
+    }
+  }
+
+  String projectName(dynamic projectId) {
+    for (final project in projects) {
+      if (project['id'].toString() ==
+          projectId.toString()) {
+        return project['name']?.toString() ?? '-';
+      }
+    }
+
+    return '-';
+  }
+
+  Future<void> addEstimate() async {
+    if (projects.isEmpty) {
+      showMsg(
+        context,
+        'Аввал як объект созед.',
+      );
+      return;
+    }
+
+    final title = TextEditingController();
+    String? projectId = projects.first['id'].toString();
+    String estimateType = 'local';
+
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Сметаи нав'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: projectId,
+                      decoration: const InputDecoration(
+                        labelText: 'Объект',
+                      ),
+                      items: projects.map((project) {
+                        return DropdownMenuItem<String>(
+                          value: project['id'].toString(),
+                          child: Text(
+                            project['name']?.toString() ?? '',
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          projectId = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: title,
+                      decoration: const InputDecoration(
+                        labelText: 'Номи смета *',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: estimateType,
+                      decoration: const InputDecoration(
+                        labelText: 'Намуди смета',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'local',
+                          child: Text('Сметаи локалӣ'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'object',
+                          child: Text('Сметаи объектӣ'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'summary',
+                          child: Text('Сметаи ҷамъбастӣ'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+
+                        setDialogState(() {
+                          estimateType = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(
+                      dialogContext,
+                      false,
+                    );
+                  },
+                  child: const Text('Бекор'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(
+                      dialogContext,
+                      true,
+                    );
+                  },
+                  child: const Text('Сабт'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (save != true) {
+      title.dispose();
+      return;
+    }
+
+    final estimateTitle = title.text.trim();
+    title.dispose();
+
+    if (estimateTitle.isEmpty || projectId == null) {
+      showMsg(
+        context,
+        'Номи смета ҳатмист.',
+      );
+      return;
+    }
+
+    try {
+      await supabase.from('estimates').insert({
+        'user_id': supabase.auth.currentUser!.id,
+        'project_id': projectId,
+        'title': estimateTitle,
+        'estimate_type': estimateType,
+        'status': 'draft',
+        'subtotal': 0,
+        'total': 0,
+      });
+
+      await load();
+
+      if (mounted) {
+        showMsg(
+          context,
+          'Смета сохта шуд.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showMsg(context, 'Хато: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: addEstimate,
+        icon: const Icon(Icons.add),
+        label: const Text('Сметаи нав'),
+      ),
+      body: loading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : RefreshIndicator(
+              onRefresh: load,
+              child: estimates.isEmpty
+                  ? ListView(
+                      physics:
+                          const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 130),
+                        Icon(
+                          Icons.calculate_outlined,
+                          size: 72,
+                        ),
+                        SizedBox(height: 16),
+                        Center(
+                          child: Text(
+                            'Ҳоло смета нест',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      physics:
+                          const AlwaysScrollableScrollPhysics(),
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                      itemCount: estimates.length,
+                      itemBuilder: (context, index) {
+                        final item = estimates[index];
+
+                        return Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(
+                                Icons.calculate,
+                              ),
+                            ),
+                            title: Text(
+                              item['title']?.toString() ?? '',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Объект: '
+                              '${projectName(item['project_id'])}\n'
+                              'Ҳолат: ${item['status'] ?? '-'}',
+                            ),
+                            trailing: Text(
+                              '${item['total'] ?? 0} сомонӣ',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+    );
+  }
+} HELPERS
 // ======================================================
 
 Widget input(

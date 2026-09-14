@@ -1,63 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const String supabaseKey = String.fromEnvironment('SUPABASE_KEY');
-const String authRedirectUrl = 'tj.smetatj.app://login-callback/';
+const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
+const redirectUrl = 'tj.smetatj.app://login-callback/';
 
-SupabaseClient get supabase => Supabase.instance.client;
+SupabaseClient get db => Supabase.instance.client;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (supabaseUrl.isEmpty || supabaseKey.isEmpty) {
-    runApp(const ConfigErrorApp());
-    return;
-  }
+  await Supabase.initialize(
+    url: supabaseUrl,
+    publishableKey: supabaseKey,
+  );
 
-  try {
-    await Supabase.initialize(
-      url: supabaseUrl,
-      publishableKey: supabaseKey,
-    );
-
-    runApp(const SmetaTJApp());
-  } catch (e) {
-    runApp(
-      ConfigErrorApp(
-        message: 'Хатои пайвастшавӣ ба Supabase:\n$e',
-      ),
-    );
-  }
-}
-
-class ConfigErrorApp extends StatelessWidget {
-  final String message;
-
-  const ConfigErrorApp({
-    super.key,
-    this.message = 'SUPABASE_URL ё SUPABASE_KEY муайян нашудааст.',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                message,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  runApp(const SmetaTJApp());
 }
 
 class SmetaTJApp extends StatelessWidget {
@@ -83,14 +41,6 @@ class SmetaTJApp extends StatelessWidget {
   }
 }
 
-void showMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(message),
-    ),
-  );
-}
-
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -99,30 +49,38 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
+  late final Stream<AuthState> authStream;
+
   @override
   void initState() {
     super.initState();
-
-    supabase.auth.onAuthStateChange.listen((data) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
+    authStream = db.auth.onAuthStateChange;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (supabase.auth.currentSession == null) {
-      return const LoginPage();
-    }
+    return StreamBuilder<AuthState>(
+      stream: authStream,
+      builder: (context, snapshot) {
+        if (db.auth.currentSession == null) {
+          return const LoginPage();
+        }
 
-    return const MainShell();
+        return const MainPage();
+      },
+    );
   }
 }
 
-// ======================================================
+void message(BuildContext context, String text) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(text)),
+  );
+}
+
+// =====================================================
 // LOGIN
-// ======================================================
+// =====================================================
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -132,74 +90,65 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final email = TextEditingController();
+  final password = TextEditingController();
 
-  bool registerMode = false;
+  bool register = false;
   bool loading = false;
-  bool hidePassword = true;
+  bool hidden = true;
 
   @override
   void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
+    email.dispose();
+    password.dispose();
     super.dispose();
   }
 
   Future<void> submit() async {
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+    final e = email.text.trim();
+    final p = password.text.trim();
 
-    if (email.isEmpty) {
-      showMessage(context, 'Email-ро ворид кунед.');
-      return;
-    }
-
-    if (password.length < 6) {
-      showMessage(
+    if (e.isEmpty || p.length < 6) {
+      message(
         context,
-        'Рамз бояд на камтар аз 6 аломат бошад.',
+        'Email ва рамзи на камтар аз 6 аломатро ворид кунед.',
       );
       return;
     }
 
-    setState(() {
-      loading = true;
-    });
+    setState(() => loading = true);
 
     try {
-      if (registerMode) {
-        await supabase.auth.signUp(
-          email: email,
-          password: password,
-          emailRedirectTo: authRedirectUrl,
+      if (register) {
+        await db.auth.signUp(
+          email: e,
+          password: p,
+          emailRedirectTo: redirectUrl,
         );
 
-        if (!mounted) return;
-
-        showMessage(
-          context,
-          'Ҳисоб сохта шуд. Email-ро барои тасдиқ санҷед.',
-        );
+        if (mounted) {
+          message(
+            context,
+            'Ҳисоб сохта шуд. Email-ро тасдиқ кунед.',
+          );
+        }
       } else {
-        await supabase.auth.signInWithPassword(
-          email: email,
-          password: password,
+        await db.auth.signInWithPassword(
+          email: e,
+          password: p,
         );
       }
-    } on AuthException catch (e) {
+    } on AuthException catch (error) {
       if (mounted) {
-        showMessage(context, e.message);
+        message(context, error.message);
       }
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
-        showMessage(context, 'Хато: $e');
+        message(context, 'Хато: $error');
       }
     } finally {
       if (mounted) {
-        setState(() {
-          loading = false;
-        });
+        setState(() => loading = false);
       }
     }
   }
@@ -212,9 +161,7 @@ class _LoginPageState extends State<LoginPage> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: 430,
-              ),
+              constraints: const BoxConstraints(maxWidth: 430),
               child: Card(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -222,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const Icon(
                         Icons.account_balance,
-                        size: 70,
+                        size: 72,
                       ),
                       const SizedBox(height: 16),
                       const Text(
@@ -239,7 +186,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 28),
                       TextField(
-                        controller: emailController,
+                        controller: email,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
                           labelText: 'Email',
@@ -248,19 +195,17 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 14),
                       TextField(
-                        controller: passwordController,
-                        obscureText: hidePassword,
+                        controller: password,
+                        obscureText: hidden,
                         decoration: InputDecoration(
                           labelText: 'Рамз',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             onPressed: () {
-                              setState(() {
-                                hidePassword = !hidePassword;
-                              });
+                              setState(() => hidden = !hidden);
                             },
                             icon: Icon(
-                              hidePassword
+                              hidden
                                   ? Icons.visibility
                                   : Icons.visibility_off,
                             ),
@@ -274,31 +219,20 @@ class _LoginPageState extends State<LoginPage> {
                         child: FilledButton(
                           onPressed: loading ? null : submit,
                           child: loading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
+                              ? const CircularProgressIndicator()
                               : Text(
-                                  registerMode
+                                  register
                                       ? 'Сабти ном'
                                       : 'Ворид шудан',
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 10),
                       TextButton(
-                        onPressed: loading
-                            ? null
-                            : () {
-                                setState(() {
-                                  registerMode = !registerMode;
-                                });
-                              },
+                        onPressed: () {
+                          setState(() => register = !register);
+                        },
                         child: Text(
-                          registerMode
+                          register
                               ? 'Ҳисоб доред? Ворид шавед'
                               : 'Ҳисоб надоред? Сабти ном',
                         ),
@@ -315,21 +249,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// ======================================================
-// MAIN SHELL
-// ======================================================
+// =====================================================
+// MAIN PAGE
+// =====================================================
 
-class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+class MainPage extends StatefulWidget {
+  const MainPage({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<MainPage> createState() => _MainPageState();
 }
 
-class _MainShellState extends State<MainShell> {
-  int selectedIndex = 0;
+class _MainPageState extends State<MainPage> {
+  int index = 0;
 
-  final List<Widget> pages = const [
+  final pages = const [
     DashboardPage(),
     ProjectsPage(),
     EstimatesPage(),
@@ -337,7 +271,7 @@ class _MainShellState extends State<MainShell> {
     PricesPage(),
   ];
 
-  final List<String> titles = const [
+  final titles = const [
     'SMETA TJ',
     'Объектҳо',
     'Сметаҳо',
@@ -350,31 +284,28 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          titles[selectedIndex],
+          titles[index],
           style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            tooltip: 'Баромад',
             onPressed: () async {
-              await supabase.auth.signOut();
+              await db.auth.signOut();
             },
             icon: const Icon(Icons.logout),
           ),
         ],
       ),
       body: IndexedStack(
-        index: selectedIndex,
+        index: index,
         children: pages,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
+        selectedIndex: index,
+        onDestinationSelected: (value) {
+          setState(() => index = value);
         },
         destinations: const [
           NavigationDestination(
@@ -408,9 +339,9 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-// ======================================================
+// =====================================================
 // DASHBOARD
-// ======================================================
+// =====================================================
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -420,59 +351,48 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  int projectsCount = 0;
-  int estimatesCount = 0;
-  int standardsCount = 0;
-  int pricesCount = 0;
+  int projectCount = 0;
+  int estimateCount = 0;
+  int standardCount = 0;
+  int priceCount = 0;
 
   bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    loadStats();
+    load();
   }
 
-  Future<void> loadStats() async {
+  Future<void> load() async {
     try {
-      final projects = await supabase.from('projects').select('id');
-
-      final estimates = await supabase.from('estimates').select('id');
-
+      final projects = await db.from('projects').select('id');
+      final estimates = await db.from('estimates').select('id');
       final standards =
-          await supabase.from('construction_standards').select('id');
-
-      final prices = await supabase.from('prices').select('id');
+          await db.from('construction_standards').select('id');
+      final prices = await db.from('prices').select('id');
 
       if (!mounted) return;
 
       setState(() {
-        projectsCount = projects.length;
-        estimatesCount = estimates.length;
-        standardsCount = standards.length;
-        pricesCount = prices.length;
+        projectCount = projects.length;
+        estimateCount = estimates.length;
+        standardCount = standards.length;
+        priceCount = prices.length;
         loading = false;
       });
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
 
-      setState(() {
-        loading = false;
-      });
-
-      showMessage(
-        context,
-        'Хатои гирифтани маълумот: $e',
-      );
+      setState(() => loading = false);
+      message(context, 'Хато: $error');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final email = supabase.auth.currentUser?.email ?? '';
-
     return RefreshIndicator(
-      onRefresh: loadStats,
+      onRefresh: load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -484,7 +404,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: [
                   const Icon(
                     Icons.cloud_done_outlined,
-                    size: 58,
+                    size: 60,
                   ),
                   const SizedBox(height: 12),
                   const Text(
@@ -497,7 +417,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 6),
                   const Text(
                     'Сохтмон бо ҳисоб. Сохтмон бо меъёр.',
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
                   const Divider(),
@@ -518,16 +437,18 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Text(email),
+                  Text(
+                    db.auth.currentUser?.email ?? '',
+                  ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 14),
           if (loading)
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(30),
                 child: CircularProgressIndicator(),
               ),
             )
@@ -538,26 +459,26 @@ class _DashboardPageState extends State<DashboardPage> {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.25,
+              childAspectRatio: 1.3,
               children: [
-                DashboardCard(
+                StatCard(
                   title: 'Объектҳо',
-                  count: projectsCount,
+                  value: projectCount,
                   icon: Icons.apartment,
                 ),
-                DashboardCard(
+                StatCard(
                   title: 'Сметаҳо',
-                  count: estimatesCount,
+                  value: estimateCount,
                   icon: Icons.calculate,
                 ),
-                DashboardCard(
+                StatCard(
                   title: 'Меъёрҳо',
-                  count: standardsCount,
+                  value: standardCount,
                   icon: Icons.menu_book,
                 ),
-                DashboardCard(
+                StatCard(
                   title: 'Нархҳо',
-                  count: pricesCount,
+                  value: priceCount,
                   icon: Icons.payments,
                 ),
               ],
@@ -568,7 +489,7 @@ class _DashboardPageState extends State<DashboardPage> {
               leading: Icon(Icons.verified_outlined),
               title: Text('Supabase пайваст аст'),
               subtitle: Text(
-                'Маълумот онлайн нигоҳ дошта мешавад.',
+                'Маълумоти шумо онлайн нигоҳ дошта мешавад.',
               ),
             ),
           ),
@@ -578,53 +499,43 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-class DashboardCard extends StatelessWidget {
+class StatCard extends StatelessWidget {
   final String title;
-  final int count;
+  final int value;
   final IconData icon;
 
-  const DashboardCard({
+  const StatCard({
     super.key,
     required this.title,
-    required this.count,
+    required this.value,
     required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 34,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 34),
+          const SizedBox(height: 8),
+          Text(
+            '$value',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 8),
-            Text(
-              '$count',
-              style: const TextStyle(
-                fontSize: 27,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          ),
+          Text(title),
+        ],
       ),
     );
   }
 }
 
-// ======================================================
+// =====================================================
 // PROJECTS
-// ======================================================
+// =====================================================
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
@@ -634,18 +545,18 @@ class ProjectsPage extends StatefulWidget {
 }
 
 class _ProjectsPageState extends State<ProjectsPage> {
-  List<Map<String, dynamic>> projects = [];
+  List<Map<String, dynamic>> rows = [];
   bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    loadProjects();
+    load();
   }
 
-  Future<void> loadProjects() async {
+  Future<void> load() async {
     try {
-      final data = await supabase
+      final result = await db
           .from('projects')
           .select()
           .order('created_at', ascending: false);
@@ -653,29 +564,26 @@ class _ProjectsPageState extends State<ProjectsPage> {
       if (!mounted) return;
 
       setState(() {
-        projects = List<Map<String, dynamic>>.from(data);
+        rows = List<Map<String, dynamic>>.from(result);
         loading = false;
       });
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
 
-      setState(() {
-        loading = false;
-      });
-
-      showMessage(context, 'Хато: $e');
+      setState(() => loading = false);
+      message(context, 'Хато: $error');
     }
   }
 
-  Future<void> addProject() async {
-    final nameController = TextEditingController();
-    final addressController = TextEditingController();
-    final customerController = TextEditingController();
-    final contractorController = TextEditingController();
-    final engineerController = TextEditingController();
-    final budgetController = TextEditingController();
+  Future<void> add() async {
+    final name = TextEditingController();
+    final address = TextEditingController();
+    final customer = TextEditingController();
+    final contractor = TextEditingController();
+    final engineer = TextEditingController();
+    final budget = TextEditingController();
 
-    final save = await showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -684,42 +592,143 @@ class _ProjectsPageState extends State<ProjectsPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                field(name, 'Номи объект *'),
+                gap(),
+                field(address, 'Суроға'),
+                gap(),
+                field(customer, 'Фармоишгар'),
+                gap(),
+                field(contractor, 'Пудратчӣ'),
+                gap(),
+                field(engineer, 'Муҳандис'),
+                gap(),
                 TextField(
-                  controller: nameController,
+                  controller: budget,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
-                    labelText: 'Номи объект *',
+                    labelText: 'Буҷет, сомонӣ',
                   ),
                 ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Суроға',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: customerController,
-                  decoration: const InputDecoration(
-                    labelText: 'Фармоишгар',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: contractorController,
-                  decoration: const InputDecoration(
-                    labelText: 'Пудратчӣ',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: engineerController,
-                  decoration: const InputDecoration(
-                    labelText: 'Муҳандис',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: budgetController,
-                  keyboardType:
-                      Process completed with exit code 65
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Бекор'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Сабт'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (ok != true) {
+      disposeControllers([
+        name,
+        address,
+        customer,
+        contractor,
+        engineer,
+        budget,
+      ]);
+      return;
+    }
+
+    final projectName = name.text.trim();
+    final projectAddress = address.text.trim();
+    final projectCustomer = customer.text.trim();
+    final projectContractor = contractor.text.trim();
+    final projectEngineer = engineer.text.trim();
+
+    final projectBudget = double.tryParse(
+          budget.text.trim().replaceAll(',', '.'),
+        ) ??
+        0;
+
+    disposeControllers([
+      name,
+      address,
+      customer,
+      contractor,
+      engineer,
+      budget,
+    ]);
+
+    if (projectName.isEmpty) {
+      if (mounted) {
+        message(context, 'Номи объект ҳатмист.');
+      }
+      return;
+    }
+
+    try {
+      await db.from('projects').insert({
+        'user_id': db.auth.currentUser!.id,
+        'name': projectName,
+        'address': projectAddress,
+        'customer': projectCustomer,
+        'contractor': projectContractor,
+        'engineer': projectEngineer,
+        'budget': projectBudget,
+        'status': 'active',
+      });
+
+      await load();
+
+      if (mounted) {
+        message(context, 'Объект сабт шуд.');
+      }
+    } catch (error) {
+      if (mounted) {
+        message(context, 'Хато: $error');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: add,
+        icon: const Icon(Icons.add),
+        label: const Text('Объекти нав'),
+      ),
+      body: loading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : RefreshIndicator(
+              onRefresh: load,
+              child: rows.isEmpty
+                  ? const EmptyView(
+                      icon: Icons.apartment_outlined,
+                      title: 'Ҳоло объект нест',
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(
+                        16,
+                        16,
+                        16,
+                        90,
+                      ),
+                      itemCount: rows.length,
+                      itemBuilder: (context, index) {
+                        final item = rows[index];
+
+                        return Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.apartment),
+                 

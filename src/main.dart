@@ -5,7 +5,7 @@ const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
 const redirectUrl = 'tj.smetatj.app://login-callback/';
 
-SupabaseClient get db => Supabase.instance.client;
+SupabaseClient get sb => Supabase.instance.client;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,11 +15,11 @@ Future<void> main() async {
     publishableKey: supabaseKey,
   );
 
-  runApp(const SmetaTJApp());
+  runApp(const App());
 }
 
-class SmetaTJApp extends StatelessWidget {
-  const SmetaTJApp({super.key});
+class App extends StatelessWidget {
+  const App({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,6 @@ class SmetaTJApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF006B55),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF5F6F8),
         inputDecorationTheme: const InputDecorationTheme(
           border: OutlineInputBorder(),
         ),
@@ -41,46 +40,29 @@ class SmetaTJApp extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
-
-  @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  late final Stream<AuthState> authStream;
-
-  @override
-  void initState() {
-    super.initState();
-    authStream = db.auth.onAuthStateChange;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: authStream,
-      builder: (context, snapshot) {
-        if (db.auth.currentSession == null) {
-          return const LoginPage();
-        }
-
-        return const MainPage();
-      },
-    );
-  }
-}
-
-void message(BuildContext context, String text) {
+void msg(BuildContext context, String text) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(text)),
   );
 }
 
-// =====================================================
-// LOGIN
-// =====================================================
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: sb.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        return sb.auth.currentSession == null
+            ? const LoginPage()
+            : const HomePage();
+      },
+    );
+  }
+}
+
+// ================= LOGIN =================
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -95,7 +77,6 @@ class _LoginPageState extends State<LoginPage> {
 
   bool register = false;
   bool loading = false;
-  bool hidden = true;
 
   @override
   void dispose() {
@@ -109,10 +90,7 @@ class _LoginPageState extends State<LoginPage> {
     final p = password.text.trim();
 
     if (e.isEmpty || p.length < 6) {
-      message(
-        context,
-        'Email ва рамзи на камтар аз 6 аломатро ворид кунед.',
-      );
+      msg(context, 'Email ва рамзи на камтар аз 6 аломатро ворид кунед.');
       return;
     }
 
@@ -120,36 +98,29 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       if (register) {
-        await db.auth.signUp(
+        await sb.auth.signUp(
           email: e,
           password: p,
           emailRedirectTo: redirectUrl,
         );
 
         if (mounted) {
-          message(
-            context,
-            'Ҳисоб сохта шуд. Email-ро тасдиқ кунед.',
-          );
+          msg(context, 'Email-ро барои тасдиқ санҷед.');
         }
       } else {
-        await db.auth.signInWithPassword(
+        await sb.auth.signInWithPassword(
           email: e,
           password: p,
         );
       }
-    } on AuthException catch (error) {
-      if (mounted) {
-        message(context, error.message);
-      }
-    } catch (error) {
-      if (mounted) {
-        message(context, 'Хато: $error');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => loading = false);
-      }
+    } on AuthException catch (e) {
+      if (mounted) msg(context, e.message);
+    } catch (e) {
+      if (mounted) msg(context, 'Хато: $e');
+    }
+
+    if (mounted) {
+      setState(() => loading = false);
     }
   }
 
@@ -160,87 +131,63 @@ class _LoginPageState extends State<LoginPage> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.account_balance,
-                        size: 72,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'SMETA TJ',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Системаи рақамии сохтмони Тоҷикистон',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 28),
-                      TextField(
-                        controller: email,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.email_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: password,
-                        obscureText: hidden,
-                        decoration: InputDecoration(
-                          labelText: 'Рамз',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              setState(() => hidden = !hidden);
-                            },
-                            icon: Icon(
-                              hidden
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: FilledButton(
-                          onPressed: loading ? null : submit,
-                          child: loading
-                              ? const CircularProgressIndicator()
-                              : Text(
-                                  register
-                                      ? 'Сабти ном'
-                                      : 'Ворид шудан',
-                                ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setState(() => register = !register);
-                        },
-                        child: Text(
-                          register
-                              ? 'Ҳисоб доред? Ворид шавед'
-                              : 'Ҳисоб надоред? Сабти ном',
-                        ),
-                      ),
-                    ],
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.account_balance,
+                  size: 70,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'SMETA TJ',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
+                const Text(
+                  'Системаи рақамии сохтмони Тоҷикистон',
+                ),
+                const SizedBox(height: 25),
+                TextField(
+                  controller: email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Рамз',
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton(
+                    onPressed: loading ? null : submit,
+                    child: loading
+                        ? const CircularProgressIndicator()
+                        : Text(
+                            register ? 'Сабти ном' : 'Ворид шудан',
+                          ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() => register = !register);
+                  },
+                  child: Text(
+                    register
+                        ? 'Ҳисоб доред? Ворид шавед'
+                        : 'Ҳисоб надоред? Сабти ном',
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -249,18 +196,16 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// =====================================================
-// MAIN PAGE
-// =====================================================
+// ================= HOME =================
 
-class MainPage extends StatefulWidget {
-  const MainPage({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<MainPage> createState() => _MainPageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _HomePageState extends State<HomePage> {
   int index = 0;
 
   final pages = const [
@@ -292,16 +237,13 @@ class _MainPageState extends State<MainPage> {
         actions: [
           IconButton(
             onPressed: () async {
-              await db.auth.signOut();
+              await sb.auth.signOut();
             },
             icon: const Icon(Icons.logout),
           ),
         ],
       ),
-      body: IndexedStack(
-        index: index,
-        children: pages,
-      ),
+      body: pages[index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
         onDestinationSelected: (value) {
@@ -309,28 +251,23 @@ class _MainPageState extends State<MainPage> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
+            icon: Icon(Icons.home_outlined),
             label: 'Асосӣ',
           ),
           NavigationDestination(
-            icon: Icon(Icons.apartment_outlined),
-            selectedIcon: Icon(Icons.apartment),
+            icon: Icon(Icons.apartment),
             label: 'Объект',
           ),
           NavigationDestination(
-            icon: Icon(Icons.calculate_outlined),
-            selectedIcon: Icon(Icons.calculate),
+            icon: Icon(Icons.calculate),
             label: 'Смета',
           ),
           NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book),
+            icon: Icon(Icons.menu_book),
             label: 'Меъёр',
           ),
           NavigationDestination(
-            icon: Icon(Icons.payments_outlined),
-            selectedIcon: Icon(Icons.payments),
+            icon: Icon(Icons.payments),
             label: 'Нарх',
           ),
         ],
@@ -339,9 +276,7 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-// =====================================================
-// DASHBOARD
-// =====================================================
+// ================= DASHBOARD =================
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -351,12 +286,10 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  int projectCount = 0;
-  int estimateCount = 0;
-  int standardCount = 0;
-  int priceCount = 0;
-
-  bool loading = true;
+  int projects = 0;
+  int estimates = 0;
+  int standards = 0;
+  int prices = 0;
 
   @override
   void initState() {
@@ -366,26 +299,21 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> load() async {
     try {
-      final projects = await db.from('projects').select('id');
-      final estimates = await db.from('estimates').select('id');
-      final standards =
-          await db.from('construction_standards').select('id');
-      final prices = await db.from('prices').select('id');
+      final a = await sb.from('projects').select('id');
+      final b = await sb.from('estimates').select('id');
+      final c = await sb.from('construction_standards').select('id');
+      final d = await sb.from('prices').select('id');
 
       if (!mounted) return;
 
       setState(() {
-        projectCount = projects.length;
-        estimateCount = estimates.length;
-        standardCount = standards.length;
-        priceCount = prices.length;
-        loading = false;
+        projects = a.length;
+        estimates = b.length;
+        standards = c.length;
+        prices = d.length;
       });
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() => loading = false);
-      message(context, 'Хато: $error');
+    } catch (e) {
+      if (mounted) msg(context, 'Хато: $e');
     }
   }
 
@@ -397,31 +325,29 @@ class _DashboardPageState extends State<DashboardPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
+          const Card(
             child: Padding(
-              padding: const EdgeInsets.all(22),
+              padding: EdgeInsets.all(20),
               child: Column(
                 children: [
-                  const Icon(
-                    Icons.cloud_done_outlined,
-                    size: 60,
+                  Icon(
+                    Icons.cloud_done,
+                    size: 55,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: 10),
+                  Text(
                     'SMETA TJ ONLINE',
                     style: TextStyle(
-                      fontSize: 25,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
+                  SizedBox(height: 8),
+                  Text(
                     'Сохтмон бо ҳисоб. Сохтмон бо меъёр.',
                   ),
-                  const SizedBox(height: 20),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  const Text(
+                  Divider(height: 30),
+                  Text(
                     '«...ба фарзандону набераҳоямон '
                     'як мулки обод мерос гузорем.»',
                     textAlign: TextAlign.center,
@@ -429,113 +355,45 @@ class _DashboardPageState extends State<DashboardPage> {
                       fontStyle: FontStyle.italic,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: 6),
+                  Text(
                     'Эмомалӣ Раҳмон',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    db.auth.currentUser?.email ?? '',
-                  ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          if (loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(30),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.3,
-              children: [
-                StatCard(
-                  title: 'Объектҳо',
-                  value: projectCount,
-                  icon: Icons.apartment,
-                ),
-                StatCard(
-                  title: 'Сметаҳо',
-                  value: estimateCount,
-                  icon: Icons.calculate,
-                ),
-                StatCard(
-                  title: 'Меъёрҳо',
-                  value: standardCount,
-                  icon: Icons.menu_book,
-                ),
-                StatCard(
-                  title: 'Нархҳо',
-                  value: priceCount,
-                  icon: Icons.payments,
-                ),
-              ],
-            ),
-          const SizedBox(height: 14),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.verified_outlined),
-              title: Text('Supabase пайваст аст'),
-              subtitle: Text(
-                'Маълумоти шумо онлайн нигоҳ дошта мешавад.',
-              ),
-            ),
-          ),
+          const SizedBox(height: 12),
+          stat('Объектҳо', projects, Icons.apartment),
+          stat('Сметаҳо', estimates, Icons.calculate),
+          stat('Меъёрҳо', standards, Icons.menu_book),
+          stat('Нархҳо', prices, Icons.payments),
         ],
       ),
     );
   }
-}
 
-class StatCard extends StatelessWidget {
-  final String title;
-  final int value;
-  final IconData icon;
-
-  const StatCard({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget stat(String title, int count, IconData icon) {
     return Card(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 34),
-          const SizedBox(height: 8),
-          Text(
-            '$value',
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: Text(
+          '$count',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
-          Text(title),
-        ],
+        ),
       ),
     );
   }
 }
 
-// =====================================================
-// PROJECTS
-// =====================================================
+// ================= PROJECTS =================
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
@@ -546,7 +404,6 @@ class ProjectsPage extends StatefulWidget {
 
 class _ProjectsPageState extends State<ProjectsPage> {
   List<Map<String, dynamic>> rows = [];
-  bool loading = true;
 
   @override
   void initState() {
@@ -556,7 +413,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
 
   Future<void> load() async {
     try {
-      final result = await db
+      final data = await sb
           .from('projects')
           .select()
           .order('created_at', ascending: false);
@@ -564,66 +421,431 @@ class _ProjectsPageState extends State<ProjectsPage> {
       if (!mounted) return;
 
       setState(() {
-        rows = List<Map<String, dynamic>>.from(result);
-        loading = false;
+        rows = List<Map<String, dynamic>>.from(data);
       });
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() => loading = false);
-      message(context, 'Хато: $error');
+    } catch (e) {
+      if (mounted) msg(context, 'Хато: $e');
     }
   }
 
   Future<void> add() async {
     final name = TextEditingController();
     final address = TextEditingController();
-    final customer = TextEditingController();
-    final contractor = TextEditingController();
-    final engineer = TextEditingController();
     final budget = TextEditingController();
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Объекти нав'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                field(name, 'Номи объект *'),
-                gap(),
-                field(address, 'Суроға'),
-                gap(),
-                field(customer, 'Фармоишгар'),
-                gap(),
-                field(contractor, 'Пудратчӣ'),
-                gap(),
-                field(engineer, 'Муҳандис'),
-                gap(),
-                TextField(
-                  controller: budget,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Буҷет, сомонӣ',
-                  ),
-                ),
-              ],
+      builder: (context) => AlertDialog(
+        title: const Text('Объекти нав'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: name,
+              decoration: const InputDecoration(
+                labelText: 'Номи объект',
+              ),
             ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: address,
+              decoration: const InputDecoration(
+                labelText: 'Суроға',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: budget,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Буҷет, сомонӣ',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Бекор'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Сабт'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    try {
+      await sb.from('projects').insert({
+        'user_id': sb.auth.currentUser!.id,
+        'name': name.text.trim(),
+        'address': address.text.trim(),
+        'budget': double.tryParse(budget.text.trim()) ?? 0,
+        'status': 'active',
+      });
+
+      await load();
+
+      if (mounted) msg(context, 'Объект сабт шуд.');
+    } catch (e) {
+      if (mounted) msg(context, 'Хато: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: add,
+        child: const Icon(Icons.add),
+      ),
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: rows.isEmpty
+            ? empty('Ҳоло объект нест')
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: rows.length,
+                itemBuilder: (context, i) {
+                  final item = rows[i];
+
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.apartment),
+                      title: Text(
+                        item['name']?.toString() ?? '',
+                      ),
+                      subtitle: Text(
+                        '${item['address'] ?? '-'}\n'
+                        '${item['budget'] ?? 0} сомонӣ',
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+// ================= ESTIMATES =================
+
+class EstimatesPage extends StatefulWidget {
+  const EstimatesPage({super.key});
+
+  @override
+  State<EstimatesPage> createState() => _EstimatesPageState();
+}
+
+class _EstimatesPageState extends State<EstimatesPage> {
+  List<Map<String, dynamic>> estimates = [];
+  List<Map<String, dynamic>> projects = [];
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final p = await sb.from('projects').select();
+      final e = await sb
+          .from('estimates')
+          .select()
+          .order('created_at', ascending: false);
+
+      if (!mounted) return;
+
+      setState(() {
+        projects = List<Map<String, dynamic>>.from(p);
+        estimates = List<Map<String, dynamic>>.from(e);
+      });
+    } catch (e) {
+      if (mounted) msg(context, 'Хато: $e');
+    }
+  }
+
+  String projectName(String id) {
+    for (final p in projects) {
+      if (p['id'].toString() == id) {
+        return p['name']?.toString() ?? '';
+      }
+    }
+    return '';
+  }
+
+  Future<void> add() async {
+    if (projects.isEmpty) {
+      msg(context, 'Аввал объект созед.');
+      return;
+    }
+
+    final title = TextEditingController();
+    String projectId = projects.first['id'].toString();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Сметаи нав'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: projectId,
+                decoration: const InputDecoration(
+                  labelText: 'Объект',
+                ),
+                items: projects.map((p) {
+                  return DropdownMenuItem(
+                    value: p['id'].toString(),
+                    child: Text(
+                      p['name']?.toString() ?? '',
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setDialogState(() => projectId = value);
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: title,
+                decoration: const InputDecoration(
+                  labelText: 'Номи смета',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Бекор'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Сабт'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (ok != true) return;
+
+    try {
+      await sb.from('estimates').insert({
+        'user_id': sb.auth.currentUser!.id,
+        'project_id': projectId,
+        'title': title.text.trim(),
+        'estimate_type': 'local',
+        'status': 'draft',
+      });
+
+      await load();
+
+      if (mounted) msg(context, 'Смета сохта шуд.');
+    } catch (e) {
+      if (mounted) msg(context, 'Хато: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: add,
+        child: const Icon(Icons.add),
+      ),
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: estimates.isEmpty
+            ? empty('Ҳоло смета нест')
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: estimates.length,
+                itemBuilder: (context, i) {
+                  final item = estimates[i];
+
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.calculate),
+                      title: Text(
+                        item['title']?.toString() ?? '',
+                      ),
+                      subtitle: Text(
+                        'Объект: '
+                        '${projectName(item['project_id'].toString())}\n'
+                        'Ҷамъ: ${item['total'] ?? 0} сомонӣ',
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+// ================= STANDARDS =================
+
+class StandardsPage extends StatefulWidget {
+  const StandardsPage({super.key});
+
+  @override
+  State<StandardsPage> createState() => _StandardsPageState();
+}
+
+class _StandardsPageState extends State<StandardsPage> {
+  List<Map<String, dynamic>> rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final data = await sb
+          .from('construction_standards')
+          .select()
+          .order('code');
+
+      if (!mounted) return;
+
+      setState(() {
+        rows = List<Map<String, dynamic>>.from(data);
+      });
+    } catch (e) {
+      if (mounted) msg(context, 'Хато: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: load,
+      child: rows.isEmpty
+          ? empty('Базаи меъёрҳо ҳоло холӣ аст')
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: rows.length,
+              itemBuilder: (context, i) {
+                final item = rows[i];
+
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.menu_book),
+                    title: Text(
+                      item['title']?.toString() ?? '',
+                    ),
+                    subtitle: Text(
+                      '${item['code'] ?? '-'} | '
+                      '${item['edition_year'] ?? '-'}',
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
+// ================= PRICES =================
+
+class PricesPage extends StatefulWidget {
+  const PricesPage({super.key});
+
+  @override
+  State<PricesPage> createState() => _PricesPageState();
+}
+
+class _PricesPageState extends State<PricesPage> {
+  List<Map<String, dynamic>> rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final data = await sb
+          .from('prices')
+          .select()
+          .order('name');
+
+      if (!mounted) return;
+
+      setState(() {
+        rows = List<Map<String, dynamic>>.from(data);
+      });
+    } catch (e) {
+      if (mounted) {
+        msg(context, 'Хато: $e');
+      }
+    }
+  }
+
+  Future<void> add() async {
+    final name = TextEditingController();
+    final unit = TextEditingController();
+    final price = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Нархи нав'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(
+                  labelText: 'Ном',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: unit,
+                decoration: const InputDecoration(
+                  labelText: 'Воҳид',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: price,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Нарх, сомонӣ',
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, false);
+                Navigator.pop(context, false);
               },
               child: const Text('Бекор'),
             ),
             FilledButton(
               onPressed: () {
-                Navigator.pop(dialogContext, true);
+                Navigator.pop(context, true);
               },
               child: const Text('Сабт'),
             ),
@@ -633,64 +855,50 @@ class _ProjectsPageState extends State<ProjectsPage> {
     );
 
     if (ok != true) {
-      disposeControllers([
-        name,
-        address,
-        customer,
-        contractor,
-        engineer,
-        budget,
-      ]);
+      name.dispose();
+      unit.dispose();
+      price.dispose();
       return;
     }
 
-    final projectName = name.text.trim();
-    final projectAddress = address.text.trim();
-    final projectCustomer = customer.text.trim();
-    final projectContractor = contractor.text.trim();
-    final projectEngineer = engineer.text.trim();
-
-    final projectBudget = double.tryParse(
-          budget.text.trim().replaceAll(',', '.'),
+    final itemName = name.text.trim();
+    final itemUnit = unit.text.trim();
+    final itemPrice = double.tryParse(
+          price.text.trim().replaceAll(',', '.'),
         ) ??
         0;
 
-    disposeControllers([
-      name,
-      address,
-      customer,
-      contractor,
-      engineer,
-      budget,
-    ]);
+    name.dispose();
+    unit.dispose();
+    price.dispose();
 
-    if (projectName.isEmpty) {
+    if (itemName.isEmpty || itemUnit.isEmpty) {
       if (mounted) {
-        message(context, 'Номи объект ҳатмист.');
+        msg(context, 'Ном ва воҳид ҳатмист.');
       }
       return;
     }
 
     try {
-      await db.from('projects').insert({
-        'user_id': db.auth.currentUser!.id,
-        'name': projectName,
-        'address': projectAddress,
-        'customer': projectCustomer,
-        'contractor': projectContractor,
-        'engineer': projectEngineer,
-        'budget': projectBudget,
-        'status': 'active',
+      await sb.from('prices').insert({
+        'owner_user_id': sb.auth.currentUser!.id,
+        'category': 'material',
+        'name': itemName,
+        'unit': itemUnit,
+        'price': itemPrice,
+        'currency': 'TJS',
+        'region': 'Tajikistan',
+        'is_official': false,
       });
 
       await load();
 
       if (mounted) {
-        message(context, 'Объект сабт шуд.');
+        msg(context, 'Нарх сабт шуд.');
       }
-    } catch (error) {
+    } catch (e) {
       if (mounted) {
-        message(context, 'Хато: $error');
+        msg(context, 'Хато: $e');
       }
     }
   }
@@ -698,37 +906,64 @@ class _ProjectsPageState extends State<ProjectsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: add,
-        icon: const Icon(Icons.add),
-        label: const Text('Объекти нав'),
+        child: const Icon(Icons.add),
       ),
-      body: loading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : RefreshIndicator(
-              onRefresh: load,
-              child: rows.isEmpty
-                  ? const EmptyView(
-                      icon: Icons.apartment_outlined,
-                      title: 'Ҳоло объект нест',
-                    )
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(
-                        16,
-                        16,
-                        16,
-                        90,
-                      ),
-                      itemCount: rows.length,
-                      itemBuilder: (context, index) {
-                        final item = rows[index];
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: rows.isEmpty
+            ? empty('Ҳоло нарх нест')
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: rows.length,
+                itemBuilder: (context, i) {
+                  final item = rows[i];
 
-                        return Card(
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              child: Icon(Icons.apartment),
-                 
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.payments),
+                      title: Text(
+                        item['name']?.toString() ?? '',
+                      ),
+                      subtitle: Text(
+                        'Воҳид: ${item['unit'] ?? '-'}',
+                      ),
+                      trailing: Text(
+                        '${item['price'] ?? 0} '
+                        '${item['currency'] ?? 'TJS'}',
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+// ================= EMPTY =================
+
+Widget empty(String text) {
+  return ListView(
+    physics: const AlwaysScrollableScrollPhysics(),
+    children: [
+      const SizedBox(height: 130),
+      const Icon(
+        Icons.inbox_outlined,
+        size: 70,
+      ),
+      const SizedBox(height: 15),
+      Center(
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    ],
+  );
+}

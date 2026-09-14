@@ -24,6 +24,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SMETA_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SMETA_SUPABASE_PUBLISHABLE_KEY }}
+
         run: |
           set -e
 
@@ -50,11 +51,52 @@ jobs:
 
           cp ../src/main.dart lib/main.dart
 
-          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml || \
-          sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
-
-          sed -i 's/android:label="smeta_tj"/android:label="SMETA TJ"/g' \
+          grep -q 'android.permission.INTERNET' \
+            android/app/src/main/AndroidManifest.xml || \
+          sed -i '/<application/i\
+              <uses-permission android:name="android.permission.INTERNET" />' \
             android/app/src/main/AndroidManifest.xml
+
+          sed -i \
+            's/android:label="smeta_tj"/android:label="SMETA TJ"/g' \
+            android/app/src/main/AndroidManifest.xml
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          text = path.read_text()
+
+          deep_link = '''
+                      <intent-filter>
+                          <action android:name="android.intent.action.VIEW" />
+                          <category android:name="android.intent.category.DEFAULT" />
+                          <category android:name="android.intent.category.BROWSABLE" />
+                          <data
+                              android:scheme="tj.smetatj.app"
+                              android:host="login-callback"
+                              android:path="/" />
+                      </intent-filter>
+          '''
+
+          if 'android:scheme="tj.smetatj.app"' not in text:
+              marker = "</activity>"
+
+              if marker not in text:
+                  raise SystemExit(
+                      "Could not find </activity> in AndroidManifest.xml"
+                  )
+
+              text = text.replace(
+                  marker,
+                  deep_link + "        " + marker,
+                  1,
+              )
+
+              path.write_text(text)
+
+          print(path.read_text())
+          PY
 
           dart format lib/main.dart
 

@@ -82,7 +82,7 @@ class AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
       stream: db.auth.onAuthStateChange,
-      builder: (_, __) {
+      builder: (context, snapshot) {
         if (db.auth.currentSession == null) {
           return const LoginPage();
         }

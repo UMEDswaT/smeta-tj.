@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+      import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -10,7 +10,12 @@ SupabaseClient get db => Supabase.instance.client;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseKey);
+
+  await Supabase.initialize(
+    url: supabaseUrl,
+    publishableKey: supabaseKey,
+  );
+
   runApp(const SmetaTjApp());
 }
 
@@ -31,18 +36,29 @@ class SmetaTjApp extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
           elevation: 0,
         ),
-        cardTheme: const CardThemeData(elevation: 0, color: Colors.white, margin: EdgeInsets.zero),
+        cardTheme: const CardThemeData(
+          elevation: 0,
+          color: Colors.white,
+          margin: EdgeInsets.zero,
+        ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFD9E1DE)),
+            borderSide: const BorderSide(
+              color: Color(0xFFD9E1DE),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: primary, width: 1.5),
+            borderSide: const BorderSide(
+              color: primary,
+              width: 1.5,
+            ),
           ),
         ),
       ),
@@ -54,10 +70,30 @@ class SmetaTjApp extends StatelessWidget {
 void notice(BuildContext context, String text) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
+    ..showSnackBar(
+      SnackBar(
+        content: Text(text),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
 }
 
-/// Generic yes/no confirmation dialog. Returns true if confirmed.
+double numberValue(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? 0;
+}
+
+String money(dynamic value) {
+  final number = numberValue(value);
+
+  if (number == number.roundToDouble()) {
+    return number.toStringAsFixed(0);
+  }
+
+  return number.toStringAsFixed(2);
+}
+
 Future<bool> confirmDialog(
   BuildContext context, {
   required String title,
@@ -66,15 +102,24 @@ Future<bool> confirmDialog(
 }) async {
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: Text(content),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Не')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(confirmLabel)),
-      ],
-    ),
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Не'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      );
+    },
   );
+
   return result ?? false;
 }
 
@@ -90,7 +135,20 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<AuthState>(
       stream: db.auth.onAuthStateChange,
       builder: (context, snapshot) {
-        return db.auth.currentSession == null ? const LoginPage() : const MainPage();
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            db.auth.currentSession == null) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (db.auth.currentSession == null) {
+          return const LoginPage();
+        }
+
+        return const MainPage();
       },
     );
   }
@@ -98,6 +156,7 @@ class AuthGate extends StatelessWidget {
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -105,6 +164,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final email = TextEditingController();
   final password = TextEditingController();
+
   bool register = false;
   bool loading = false;
   bool obscure = true;
@@ -120,23 +180,51 @@ class _LoginPageState extends State<LoginPage> {
     final userEmail = email.text.trim();
     final userPassword = password.text;
 
-    if (userEmail.isEmpty) return notice(context, 'Email-ро ворид кунед.');
-    if (userPassword.length < 6) return notice(context, 'Рамз бояд на камтар аз 6 аломат бошад.');
+    if (userEmail.isEmpty) {
+      notice(context, 'Email-ро ворид кунед.');
+      return;
+    }
+
+    if (userPassword.length < 6) {
+      notice(
+        context,
+        'Рамз бояд на камтар аз 6 аломат бошад.',
+      );
+      return;
+    }
 
     setState(() => loading = true);
+
     try {
       if (register) {
-        await db.auth.signUp(email: userEmail, password: userPassword, emailRedirectTo: authRedirect);
-        if (mounted) notice(context, 'Ҳисоб сохта шуд. Email-ро тасдиқ кунед.');
+        await db.auth.signUp(
+          email: userEmail,
+          password: userPassword,
+          emailRedirectTo: authRedirect,
+        );
+
+        if (!mounted) return;
+
+        notice(
+          context,
+          'Ҳисоб сохта шуд. Email-ро тасдиқ кунед.',
+        );
       } else {
-        await db.auth.signInWithPassword(email: userEmail, password: userPassword);
+        await db.auth.signInWithPassword(
+          email: userEmail,
+          password: userPassword,
+        );
       }
     } on AuthException catch (e) {
-      if (mounted) notice(context, e.message);
+      if (!mounted) return;
+      notice(context, e.message);
     } catch (e) {
-      if (mounted) notice(context, 'Хатои система: $e');
+      if (!mounted) return;
+      notice(context, 'Хатои система: $e');
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -158,15 +246,28 @@ class _LoginPageState extends State<LoginPage> {
                       color: const Color(0xFFE0F4ED),
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    child: const Icon(Icons.architecture_rounded, size: 48, color: primary),
+                    child: const Icon(
+                      Icons.architecture_rounded,
+                      size: 48,
+                      color: primary,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  const Text('SMETA TJ', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
+                  const Text(
+                    'SMETA TJ',
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   const Text(
                     'Системаи рақамии сохтмони Тоҷикистон',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: Color(0xFF596460)),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF596460),
+                    ),
                   ),
                   const SizedBox(height: 28),
                   Container(
@@ -174,7 +275,9 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFFE2E8E5)),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8E5),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -193,10 +296,17 @@ class _LoginPageState extends State<LoginPage> {
                           obscureText: obscure,
                           decoration: InputDecoration(
                             labelText: 'Рамз',
-                            prefixIcon: const Icon(Icons.lock_outline),
+                            prefixIcon:
+                                const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
-                              onPressed: () => setState(() => obscure = !obscure),
-                              icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                              onPressed: () {
+                                setState(() => obscure = !obscure);
+                              },
+                              icon: Icon(
+                                obscure
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
                             ),
                           ),
                         ),
@@ -208,14 +318,33 @@ class _LoginPageState extends State<LoginPage> {
                             onPressed: loading ? null : submit,
                             child: loading
                                 ? const SizedBox(
-                                    width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                                : Text(register ? 'Сабти ном' : 'Ворид шудан'),
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    register
+                                        ? 'Сабти ном'
+                                        : 'Ворид шудан',
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 8),
                         TextButton(
-                          onPressed: loading ? null : () => setState(() => register = !register),
-                          child: Text(register ? 'Ҳисоб доред? Ворид шавед' : 'Ҳисоби нав созед'),
+                          onPressed: loading
+                              ? null
+                              : () {
+                                  setState(
+                                    () => register = !register,
+                                  );
+                                },
+                          child: Text(
+                            register
+                                ? 'Ҳисоб доред? Ворид шавед'
+                                : 'Ҳисоби нав созед',
+                          ),
                         ),
                       ],
                     ),
@@ -231,11 +360,12 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 // =====================================================
-// MAIN SHELL
+// MAIN 1-5
 // =====================================================
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
+
   @override
   State<MainPage> createState() => _MainPageState();
 }
@@ -243,28 +373,61 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int index = 0;
 
-  static const pages = [DashboardPage(), ProjectsPage(), EstimatesPage(), StandardsPage()];
-  static const titles = ['SMETA TJ', 'Объектҳо', 'Смета', 'Меъёрҳо'];
+  static const pages = [
+    DashboardPage(),
+    ProjectsPage(),
+    EstimatesPage(),
+    StandardsPage(),
+    PricesPage(),
+  ];
+
+  static const titles = [
+    'SMETA TJ',
+    'Объектҳо',
+    'Сметаҳо',
+    'Меъёрҳо',
+    'Нархҳо',
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[index], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+        title: Text(
+          titles[index],
+          style: const TextStyle(
+            fontSize: 23,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
         actions: [
           IconButton(
+            tooltip: 'Навсозӣ',
+            onPressed: () {
+              setState(() {});
+            },
+            icon: const Icon(Icons.sync_rounded),
+          ),
+          IconButton(
             tooltip: 'Баромад',
-            onPressed: () => db.auth.signOut(),
+            onPressed: () async {
+              await db.auth.signOut();
+            },
             icon: const Icon(Icons.logout_rounded),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
         ],
       ),
-      body: IndexedStack(index: index, children: pages),
+      body: IndexedStack(
+        index: index,
+        children: pages,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
         height: 74,
-        onDestinationSelected: (value) => setState(() => index = value),
+        onDestinationSelected: (value) {
+          setState(() => index = value);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
@@ -274,7 +437,7 @@ class _MainPageState extends State<MainPage> {
           NavigationDestination(
             icon: Icon(Icons.apartment_outlined),
             selectedIcon: Icon(Icons.apartment_rounded),
-            label: 'Объектҳо',
+            label: 'Объект',
           ),
           NavigationDestination(
             icon: Icon(Icons.calculate_outlined),
@@ -284,7 +447,12 @@ class _MainPageState extends State<MainPage> {
           NavigationDestination(
             icon: Icon(Icons.menu_book_outlined),
             selectedIcon: Icon(Icons.menu_book_rounded),
-            label: 'Меъёрҳо',
+            label: 'Меъёр',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.payments_outlined),
+            selectedIcon: Icon(Icons.payments_rounded),
+            label: 'Нарх',
           ),
         ],
       ),
@@ -293,20 +461,23 @@ class _MainPageState extends State<MainPage> {
 }
 
 // =====================================================
-// DASHBOARD
+// 1. DASHBOARD
 // =====================================================
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
   bool loading = true;
+
   int projectCount = 0;
   int estimateCount = 0;
   int standardCount = 0;
+  int priceCount = 0;
 
   @override
   void initState() {
@@ -315,23 +486,32 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> load() async {
+    if (mounted) {
+      setState(() => loading = true);
+    }
+
     try {
       final results = await Future.wait([
         db.from('projects').select('id'),
         db.from('estimates').select('id'),
         db.from('construction_standards').select('id'),
+        db.from('prices').select('id'),
       ]);
+
       if (!mounted) return;
+
       setState(() {
         projectCount = results[0].length;
         estimateCount = results[1].length;
         standardCount = results[2].length;
+        priceCount = results[3].length;
         loading = false;
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() => loading = false);
-      notice(context, 'Хатои боркунии маълумот: $e');
+      notice(context, 'Хатои боркунӣ: $e');
     }
   }
 
@@ -343,7 +523,7 @@ class _DashboardPageState extends State<DashboardPage> {
       onRefresh: load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
         children: [
           Container(
             padding: const EdgeInsets.all(22),
@@ -352,28 +532,49 @@ class _DashboardPageState extends State<DashboardPage> {
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFFF1FAF6), Color(0xFFE3F2EC)],
+                colors: [
+                  Color(0xFFF1FAF6),
+                  Color(0xFFE3F2EC),
+                ],
               ),
-              border: Border.all(color: const Color(0xFFD8E8E1)),
+              border: Border.all(
+                color: const Color(0xFFD8E8E1),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
-                    const CircleAvatar(
-                      radius: 27,
+                    CircleAvatar(
+                      radius: 28,
                       backgroundColor: Colors.white,
-                      child: Icon(Icons.architecture_rounded, color: primary, size: 30),
+                      child: Icon(
+                        Icons.architecture_rounded,
+                        color: primary,
+                        size: 31,
+                      ),
                     ),
-                    const SizedBox(width: 14),
-                    const Expanded(
+                    SizedBox(width: 14),
+                    Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
-                          Text('SMETA TJ ONLINE', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                          Text(
+                            'SMETA TJ ONLINE',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                           SizedBox(height: 4),
-                          Text('Сохтмон бо ҳисоб. Сохтмон бо меъёр.', style: TextStyle(color: Color(0xFF53605C))),
+                          Text(
+                            'Сохтмон бо ҳисоб. Сохтмон бо меъёр.',
+                            style: TextStyle(
+                              color: Color(0xFF53605C),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -383,55 +584,130 @@ class _DashboardPageState extends State<DashboardPage> {
                 const Divider(),
                 const SizedBox(height: 12),
                 const Text(
-                  '«...БА ФАРЗАНДОНУ НАБЕРАҲОЯМОН ЯК МУЛКИ ОБОД МЕРОС ГУЗОРЕМ.»',
-                  style: TextStyle(fontSize: 19, height: 1.35, fontWeight: FontWeight.w900),
+                  '«...БА ФАРЗАНДОНУ НАБЕРАҲОЯМОН '
+                  'ЯК МУЛКИ ОБОД МЕРОС ГУЗОРЕМ.»',
+                  style: TextStyle(
+                    fontSize: 19,
+                    height: 1.35,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                const Text('Эмомалӣ Раҳмон', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: primary)),
+                const Text(
+                  'Эмомалӣ Раҳмон',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: primary,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Icon(Icons.person_outline_rounded, size: 19),
+                    const Icon(
+                      Icons.person_outline_rounded,
+                      size: 19,
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(userEmail, overflow: TextOverflow.ellipsis)),
+                    Expanded(
+                      child: Text(
+                        userEmail,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          const Text('Шарҳи умумӣ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
+          const SizedBox(height: 18),
+          const Text(
+            'Шарҳи умумӣ',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: statCard(icon: Icons.apartment_rounded, title: 'Объектҳо', value: projectCount, loading: loading)),
+              Expanded(
+                child: statCard(
+                  icon: Icons.apartment_rounded,
+                  title: 'Объектҳо',
+                  value: projectCount,
+                  loading: loading,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: statCard(icon: Icons.calculate_rounded, title: 'Сметаҳо', value: estimateCount, loading: loading)),
+              Expanded(
+                child: statCard(
+                  icon: Icons.calculate_rounded,
+                  title: 'Сметаҳо',
+                  value: estimateCount,
+                  loading: loading,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          wideStatCard(
-            icon: Icons.menu_book_rounded,
-            title: 'Меъёрҳои сохтмонӣ',
-            subtitle: 'МҚС, ҚМҚ ва ҳуҷҷатҳои меъёрӣ',
-            value: standardCount,
-            loading: loading,
+          Row(
+            children: [
+              Expanded(
+                child: statCard(
+                  icon: Icons.menu_book_rounded,
+                  title: 'Меъёрҳо',
+                  value: standardCount,
+                  loading: loading,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: statCard(
+                  icon: Icons.payments_rounded,
+                  title: 'Нархҳо',
+                  value: priceCount,
+                  loading: loading,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: const Color(0xFFE9F6F1), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9F6F1),
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: const Row(
               children: [
-                CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.cloud_done_rounded, color: primary)),
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.cloud_done_rounded,
+                    color: primary,
+                  ),
+                ),
                 SizedBox(width: 14),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
-                      Text('Supabase пайваст аст', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                      Text(
+                        'SMETA TJ Online',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                       SizedBox(height: 3),
-                      Text('Маълумот онлайн нигоҳ дошта мешавад.', style: TextStyle(color: Color(0xFF596460))),
+                      Text(
+                        'Маълумот бо Supabase ҳамоҳанг мешавад.',
+                        style: TextStyle(
+                          color: Color(0xFF596460),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -445,367 +721,21 @@ class _DashboardPageState extends State<DashboardPage> {
 }
 
 // =====================================================
-// PROJECTS
+// 2. PROJECTS
 // =====================================================
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({super.key});
+
   @override
   State<ProjectsPage> createState() => _ProjectsPageState();
 }
 
 class _ProjectsPageState extends State<ProjectsPage> {
+  final search = TextEditingController();
+
+  List<Map<String, dynamic>> items = [];
   bool loading = true;
-  List<Map<String, dynamic>> projects = [];
-
-  @override
-  void initState() {
-    super.initState();
-    load();
-  }
-
-  Future<void> load() async {
-    try {
-      final data = await db.from('projects').select().order('created_at', ascending: false);
-      if (!mounted) return;
-      setState(() {
-        projects = List<Map<String, dynamic>>.from(data);
-        loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => loading = false);
-      notice(context, 'Хатои объектҳо: $e');
-    }
-  }
-
-  Future<void> addProject() async {
-    final controllers = {
-      'name': TextEditingController(),
-      'address': TextEditingController(),
-      'customer': TextEditingController(),
-      'contractor': TextEditingController(),
-      'engineer': TextEditingController(),
-      'budget': TextEditingController(),
-    };
-
-    final save = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Объекти нав'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              appField(controllers['name']!, 'Номи объект *'),
-              const SizedBox(height: 10),
-              appField(controllers['address']!, 'Суроға'),
-              const SizedBox(height: 10),
-              appField(controllers['customer']!, 'Фармоишгар'),
-              const SizedBox(height: 10),
-              appField(controllers['contractor']!, 'Пудратчӣ'),
-              const SizedBox(height: 10),
-              appField(controllers['engineer']!, 'Муҳандис'),
-              const SizedBox(height: 10),
-              TextField(
-                controller: controllers['budget'],
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Буҷет, сомонӣ'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Бекор')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Сабт')),
-        ],
-      ),
-    );
-
-    final name = controllers['name']!.text.trim();
-    final row = {
-      'name': name,
-      'address': controllers['address']!.text.trim(),
-      'customer': controllers['customer']!.text.trim(),
-      'contractor': controllers['contractor']!.text.trim(),
-      'engineer': controllers['engineer']!.text.trim(),
-      'budget': double.tryParse(controllers['budget']!.text.trim().replaceAll(',', '.')) ?? 0,
-    };
-    for (final c in controllers.values) {
-      c.dispose();
-    }
-
-    if (!mounted || save != true) return;
-    if (name.isEmpty) return notice(context, 'Номи объект ҳатмист.');
-
-    try {
-      await db.from('projects').insert({...row, 'user_id': db.auth.currentUser!.id, 'status': 'active'});
-      await load();
-      if (mounted) notice(context, 'Объект сабт шуд.');
-    } catch (e) {
-      if (mounted) notice(context, 'Хатои сабти объект: $e');
-    }
-  }
-
-  Future<void> removeProject(Map<String, dynamic> project) async {
-    final yes = await confirmDialog(
-      context,
-      title: 'Нест кардани объект',
-      content: '«${project['name'] ?? ''}» нест карда шавад?',
-      confirmLabel: 'Нест кардан',
-    );
-    if (!mounted || !yes) return;
-
-    try {
-      await db.from('projects').delete().eq('id', project['id']);
-      await load();
-      if (mounted) notice(context, 'Объект нест карда шуд.');
-    } catch (e) {
-      if (mounted) notice(context, 'Нест кардан нашуд: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: addProject,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Объекти нав'),
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: load,
-              child: projects.isEmpty
-                  ? emptyView(
-                      icon: Icons.apartment_outlined,
-                      title: 'Ҳоло объект нест',
-                      subtitle: 'Объекти аввалро илова кунед.',
-                    )
-                  : ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                      itemCount: projects.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = projects[index];
-                        return appListCard(
-                          leading: Icons.apartment_rounded,
-                          title: item['name']?.toString() ?? '',
-                          subtitle: '${item['address'] ?? 'Суроға нишон дода нашудааст'}\n'
-                              'Фармоишгар: ${item['customer'] ?? '-'}\n'
-                              'Муҳандис: ${item['engineer'] ?? '-'}',
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'delete') removeProject(item);
-                            },
-                            itemBuilder: (context) =>
-                                const [PopupMenuItem(value: 'delete', child: Text('Нест кардан'))],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-    );
-  }
-}
-
-// =====================================================
-// ESTIMATES
-// =====================================================
-
-class EstimatesPage extends StatefulWidget {
-  const EstimatesPage({super.key});
-  @override
-  State<EstimatesPage> createState() => _EstimatesPageState();
-}
-
-class _EstimatesPageState extends State<EstimatesPage> {
-  bool loading = true;
-  List<Map<String, dynamic>> estimates = [];
-  List<Map<String, dynamic>> projects = [];
-
-  static const typeLabels = {'object': 'Объектӣ', 'summary': 'Ҷамъбастӣ'};
-
-  @override
-  void initState() {
-    super.initState();
-    load();
-  }
-
-  Future<void> load() async {
-    try {
-      final results = await Future.wait([
-        db.from('estimates').select().order('created_at', ascending: false),
-        db.from('projects').select('id,name').order('name'),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        estimates = List<Map<String, dynamic>>.from(results[0]);
-        projects = List<Map<String, dynamic>>.from(results[1]);
-        loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => loading = false);
-      notice(context, 'Хатои сметаҳо: $e');
-    }
-  }
-
-  String getProjectName(dynamic projectId) {
-    final match = projects.where((p) => p['id'].toString() == projectId.toString());
-    return match.isEmpty ? '-' : (match.first['name']?.toString() ?? '-');
-  }
-
-  String estimateType(dynamic value) => typeLabels[value] ?? 'Локалӣ';
-
-  Future<void> addEstimate() async {
-    if (projects.isEmpty) return notice(context, 'Аввал объект созед.');
-
-    final title = TextEditingController();
-    String? projectId = projects.first['id'].toString();
-    String type = 'local';
-
-    final save = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Сметаи нав'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: projectId,
-                  decoration: const InputDecoration(labelText: 'Объект'),
-                  items: projects
-                      .map((p) => DropdownMenuItem(value: p['id'].toString(), child: Text(p['name']?.toString() ?? '')))
-                      .toList(),
-                  onChanged: (value) => setDialogState(() => projectId = value),
-                ),
-                const SizedBox(height: 12),
-                appField(title, 'Номи смета *'),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: type,
-                  decoration: const InputDecoration(labelText: 'Намуди смета'),
-                  items: const [
-                    DropdownMenuItem(value: 'local', child: Text('Сметаи локалӣ')),
-                    DropdownMenuItem(value: 'object', child: Text('Сметаи объектӣ')),
-                    DropdownMenuItem(value: 'summary', child: Text('Сметаи ҷамъбастӣ')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) setDialogState(() => type = value);
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Бекор')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Сабт')),
-          ],
-        ),
-      ),
-    );
-
-    final estimateTitle = title.text.trim();
-    title.dispose();
-
-    if (!mounted || save != true) return;
-    if (estimateTitle.isEmpty || projectId == null) return notice(context, 'Номи смета ҳатмист.');
-
-    try {
-      await db.from('estimates').insert({
-        'user_id': db.auth.currentUser!.id,
-        'project_id': projectId,
-        'title': estimateTitle,
-        'estimate_type': type,
-        'status': 'draft',
-        'subtotal': 0,
-        'total': 0,
-      });
-      await load();
-      if (mounted) notice(context, 'Смета сохта шуд.');
-    } catch (e) {
-      if (mounted) notice(context, 'Хатои сабти смета: $e');
-    }
-  }
-
-  Future<void> removeEstimate(Map<String, dynamic> estimate) async {
-    try {
-      await db.from('estimates').delete().eq('id', estimate['id']);
-      await load();
-      if (mounted) notice(context, 'Смета нест карда шуд.');
-    } catch (e) {
-      if (mounted) notice(context, 'Нест кардан нашуд: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: addEstimate,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Сметаи нав'),
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: load,
-              child: estimates.isEmpty
-                  ? emptyView(
-                      icon: Icons.calculate_outlined,
-                      title: 'Ҳоло смета нест',
-                      subtitle: 'Барои объект сметаи нав созед.',
-                    )
-                  : ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                      itemCount: estimates.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = estimates[index];
-                        return appListCard(
-                          leading: Icons.calculate_rounded,
-                          title: item['title']?.toString() ?? '',
-                          subtitle: 'Объект: ${getProjectName(item['project_id'])}\n'
-                              'Навъ: ${estimateType(item['estimate_type'])}',
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('${item['total'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w900)),
-                              const Text('сомонӣ', style: TextStyle(fontSize: 11)),
-                            ],
-                          ),
-                          onLongPress: () => removeEstimate(item),
-                        );
-                      },
-                    ),
-            ),
-    );
-  }
-}
-
-// =====================================================
-// STANDARDS
-// =====================================================
-
-class StandardsPage extends StatefulWidget {
-  const StandardsPage({super.key});
-  @override
-  State<StandardsPage> createState() => _StandardsPageState();
-}
-
-class _StandardsPageState extends State<StandardsPage> {
-  bool loading = true;
-  List<Map<String, dynamic>> standards = [];
-  List<Map<String, dynamic>> filtered = [];
-  final searchController = TextEditingController();
 
   @override
   void initState() {
@@ -815,213 +745,1616 @@ class _StandardsPageState extends State<StandardsPage> {
 
   @override
   void dispose() {
-    searchController.dispose();
+    search.dispose();
     super.dispose();
   }
 
   Future<void> load() async {
+    if (mounted) {
+      setState(() => loading = true);
+    }
+
     try {
-      final data = await db.from('construction_standards').select().order('code', ascending: true);
+      final data = await db
+          .from('projects')
+          .select()
+          .order('created_at', ascending: false);
+
       if (!mounted) return;
-      final rows = List<Map<String, dynamic>>.from(data);
+
       setState(() {
-        standards = rows;
-        filtered = rows;
+        items = List<Map<String, dynamic>>.from(data);
         loading = false;
       });
     } catch (e) {
       if (!mounted) return;
+
+      setState(() => loading = false);
+      notice(context, 'Хатои объектҳо: $e');
+    }
+  }
+
+  List<Map<String, dynamic>> get filtered {
+    final q = search.text.trim().toLowerCase();
+
+    if (q.isEmpty) return items;
+
+    return items.where((item) {
+      final text = [
+        item['name'],
+        item['address'],
+        item['customer'],
+        item['contractor'],
+        item['engineer'],
+        item['status'],
+      ].join(' ').toLowerCase();
+
+      return text.contains(q);
+    }).toList();
+  }
+
+  Future<void> addProject() async {
+    final name = TextEditingController();
+    final address = TextEditingController();
+    final customer = TextEditingController();
+    final contractor = TextEditingController();
+    final engineer = TextEditingController();
+    final budget = TextEditingController();
+
+    String status = 'Нав';
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Объекти нав'),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      appField(
+                        name,
+                        'Номи объект *',
+                        Icons.apartment_rounded,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        address,
+                        'Суроға',
+                        Icons.location_on_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        customer,
+                        'Фармоишгар',
+                        Icons.person_outline,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        contractor,
+                        'Пудратчӣ',
+                        Icons.business_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        engineer,
+                        'Муҳандис',
+                        Icons.engineering_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        budget,
+                        'Буҷет, сомонӣ',
+                        Icons.payments_outlined,
+                        number: true,
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: status,
+                        decoration: const InputDecoration(
+                          labelText: 'Ҳолат',
+                          prefixIcon:
+                              Icon(Icons.flag_outlined),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Нав',
+                            child: Text('Нав'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Дар кор',
+                            child: Text('Дар кор'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Анҷомшуда',
+                            child: Text('Анҷомшуда'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() => status = value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext, false);
+                  },
+                  child: const Text('Бекор'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (name.text.trim().isEmpty) {
+                      notice(
+                        context,
+                        'Номи объектро нависед.',
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(dialogContext, true);
+                  },
+                  child: const Text('Сабт'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved == true) {
+      try {
+        await db.from('projects').insert({
+          'user_id': db.auth.currentUser!.id,
+          'name': name.text.trim(),
+          'address': address.text.trim(),
+          'customer': customer.text.trim(),
+          'contractor': contractor.text.trim(),
+          'engineer': engineer.text.trim(),
+          'budget': numberValue(budget.text),
+          'status': status,
+        });
+
+        if (!mounted) return;
+
+        notice(context, 'Объект сабт шуд.');
+        await load();
+      } catch (e) {
+        if (!mounted) return;
+        notice(context, 'Хатои сабти объект: $e');
+      }
+    }
+
+    name.dispose();
+    address.dispose();
+    customer.dispose();
+    contractor.dispose();
+    engineer.dispose();
+    budget.dispose();
+  }
+
+  Future<void> deleteProject(
+    Map<String, dynamic> item,
+  ) async {
+    final yes = await confirmDialog(
+      context,
+      title: 'Нест кардани объект',
+      content:
+          'Объекти «${item['name'] ?? ''}» нест карда шавад?',
+      confirmLabel: 'Нест кардан',
+    );
+
+    if (!yes) return;
+
+    try {
+      await db.from('projects').delete().eq('id', item['id']);
+
+      if (!mounted) return;
+
+      notice(context, 'Объект нест карда шуд.');
+      await load();
+    } catch (e) {
+      if (!mounted) return;
+
+      notice(
+        context,
+        'Объект нест нашуд. Эҳтимол ба он смета пайваст аст: $e',
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = filtered;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: addProject,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Объект'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          children: [
+            TextField(
+              controller: search,
+              onChanged: (value) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: 'Ҷустуҷӯи объект...',
+                prefixIcon: Icon(Icons.search_rounded),
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (data.isEmpty)
+              emptyView(
+                Icons.apartment_outlined,
+                'Объект ёфт нашуд',
+                'Бо тугмаи «Объект» объекти нав илова кунед.',
+              )
+            else
+              ...data.map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: appListCard(
+                    icon: Icons.apartment_rounded,
+                    title: item['name']?.toString() ??
+                        'Бе ном',
+                    subtitle: [
+                      item['address'],
+                      item['customer'],
+                      item['status'],
+                    ]
+                        .where(
+                          (value) =>
+                              value != null &&
+                              value.toString().trim().isNotEmpty,
+                        )
+                        .join(' • '),
+                    trailing:
+                        '${money(item['budget'])} сомонӣ',
+                    onTap: () {
+                      showProjectInfo(item);
+                    },
+                    onDelete: () {
+                      deleteProject(item);
+                    },
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void showProjectInfo(Map<String, dynamic> item) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            item['name']?.toString() ?? 'Объект',
+          ),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                infoRow('Суроға', item['address']),
+                infoRow('Фармоишгар', item['customer']),
+                infoRow('Пудратчӣ', item['contractor']),
+                infoRow('Муҳандис', item['engineer']),
+                infoRow('Ҳолат', item['status']),
+                infoRow(
+                  'Буҷет',
+                  '${money(item['budget'])} сомонӣ',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Пӯшидан'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// =====================================================
+// 3. ESTIMATES
+// =====================================================
+
+class EstimatesPage extends StatefulWidget {
+  const EstimatesPage({super.key});
+
+  @override
+  State<EstimatesPage> createState() => _EstimatesPageState();
+}
+
+class _EstimatesPageState extends State<EstimatesPage> {
+  final search = TextEditingController();
+
+  List<Map<String, dynamic>> estimates = [];
+  List<Map<String, dynamic>> projects = [];
+
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> load() async {
+    if (mounted) {
+      setState(() => loading = true);
+    }
+
+    try {
+      final results = await Future.wait([
+        db
+            .from('estimates')
+            .select()
+            .order('created_at', ascending: false),
+        db
+            .from('projects')
+            .select('id,name')
+            .order('created_at', ascending: false),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        estimates =
+            List<Map<String, dynamic>>.from(results[0]);
+        projects =
+            List<Map<String, dynamic>>.from(results[1]);
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => loading = false);
+      notice(context, 'Хатои сметаҳо: $e');
+    }
+  }
+
+  String projectName(dynamic id) {
+    for (final project in projects) {
+      if (project['id'].toString() == id?.toString()) {
+        return project['name']?.toString() ?? '';
+      }
+    }
+
+    return '';
+  }
+
+  List<Map<String, dynamic>> get filtered {
+    final q = search.text.trim().toLowerCase();
+
+    if (q.isEmpty) return estimates;
+
+    return estimates.where((item) {
+      final text = [
+        item['title'],
+        item['estimate_type'],
+        item['status'],
+        projectName(item['project_id']),
+      ].join(' ').toLowerCase();
+
+      return text.contains(q);
+    }).toList();
+  }
+
+  Future<void> addEstimate() async {
+    if (projects.isEmpty) {
+      notice(
+        context,
+        'Аввал ҳадди ақал як объект созед.',
+      );
+      return;
+    }
+
+    final title = TextEditingController();
+    final subtotal = TextEditingController();
+    final total = TextEditingController();
+
+    String? projectId = projects.first['id'].toString();
+    String type = 'Локалӣ';
+    String status = 'Лоиҳа';
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Сметаи нав'),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: projectId,
+                        decoration: const InputDecoration(
+                          labelText: 'Объект',
+                          prefixIcon:
+                              Icon(Icons.apartment_outlined),
+                        ),
+                        items: projects.map((project) {
+                          return DropdownMenuItem<String>(
+                            value: project['id'].toString(),
+                            child: Text(
+                              project['name']?.toString() ??
+                                  'Объект',
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setDialogState(
+                            () => projectId = value,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        title,
+                        'Номи смета *',
+                        Icons.description_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: type,
+                        decoration: const InputDecoration(
+                          labelText: 'Намуди смета',
+                          prefixIcon:
+                              Icon(Icons.category_outlined),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Локалӣ',
+                            child: Text('Локалӣ'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Объектӣ',
+                            child: Text('Объектӣ'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Ҷамъбастӣ',
+                            child: Text('Ҷамъбастӣ'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() => type = value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        initialValue: status,
+                        decoration: const InputDecoration(
+                          labelText: 'Ҳолат',
+                          prefixIcon:
+                              Icon(Icons.flag_outlined),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Лоиҳа',
+                            child: Text('Лоиҳа'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Тасдиқшуда',
+                            child: Text('Тасдиқшуда'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Архив',
+                            child: Text('Архив'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(
+                              () => status = value,
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        subtotal,
+                        'Маблағи асосӣ',
+                        Icons.calculate_outlined,
+                        number: true,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        total,
+                        'Маблағи умумӣ',
+                        Icons.payments_outlined,
+                        number: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext, false);
+                  },
+                  child: const Text('Бекор'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (title.text.trim().isEmpty) {
+                      notice(
+                        context,
+                        'Номи сметаро нависед.',
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(dialogContext, true);
+                  },
+                  child: const Text('Сабт'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved == true && projectId != null) {
+      try {
+        final base = numberValue(subtotal.text);
+        final finalTotal = total.text.trim().isEmpty
+            ? base
+            : numberValue(total.text);
+
+        await db.from('estimates').insert({
+          'user_id': db.auth.currentUser!.id,
+          'project_id': projectId,
+          'title': title.text.trim(),
+          'estimate_type': type,
+          'status': status,
+          'subtotal': base,
+          'total': finalTotal,
+        });
+
+        if (!mounted) return;
+
+        notice(context, 'Смета сабт шуд.');
+        await load();
+      } catch (e) {
+        if (!mounted) return;
+
+        notice(context, 'Хатои сабти смета: $e');
+      }
+    }
+
+    title.dispose();
+    subtotal.dispose();
+    total.dispose();
+  }
+
+  Future<void> deleteEstimate(
+    Map<String, dynamic> item,
+  ) async {
+    final yes = await confirmDialog(
+      context,
+      title: 'Нест кардани смета',
+      content:
+          'Сметаи «${item['title'] ?? ''}» нест карда шавад?',
+      confirmLabel: 'Нест кардан',
+    );
+
+    if (!yes) return;
+
+    try {
+      await db.from('estimates').delete().eq('id', item['id']);
+
+      if (!mounted) return;
+
+      notice(context, 'Смета нест карда шуд.');
+      await load();
+    } catch (e) {
+      if (!mounted) return;
+      notice(context, 'Хатои нест кардани смета: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = filtered;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: addEstimate,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Смета'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          children: [
+            TextField(
+              controller: search,
+              onChanged: (value) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: 'Ҷустуҷӯи смета...',
+                prefixIcon: Icon(Icons.search_rounded),
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (data.isEmpty)
+              emptyView(
+                Icons.calculate_outlined,
+                'Смета ёфт нашуд',
+                'Сметаи нави объектро илова кунед.',
+              )
+            else
+              ...data.map(
+                (item) {
+                  final project =
+                      projectName(item['project_id']);
+
+                  return Padding(
+                    padding:
+                        const EdgeInsets.only(bottom: 10),
+                    child: appListCard(
+                      icon: Icons.calculate_rounded,
+                      title: item['title']?.toString() ??
+                          'Смета',
+                      subtitle: [
+                        project,
+                        item['estimate_type'],
+                        item['status'],
+                      ]
+                          .where(
+                            (value) =>
+                                value != null &&
+                                value
+                                    .toString()
+                                    .trim()
+                                    .isNotEmpty,
+                          )
+                          .join(' • '),
+                      trailing:
+                          '${money(item['total'])} сомонӣ',
+                      onTap: () {
+                        showEstimateInfo(item);
+                      },
+                      onDelete: () {
+                        deleteEstimate(item);
+                      },
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void showEstimateInfo(Map<String, dynamic> item) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            item['title']?.toString() ?? 'Смета',
+          ),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                infoRow(
+                  'Объект',
+                  projectName(item['project_id']),
+                ),
+                infoRow(
+                  'Намуд',
+                  item['estimate_type'],
+                ),
+                infoRow('Ҳолат', item['status']),
+                infoRow(
+                  'Маблағи асосӣ',
+                  '${money(item['subtotal'])} сомонӣ',
+                ),
+                infoRow(
+                  'Ҷамъ',
+                  '${money(item['total'])} сомонӣ',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Пӯшидан'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// =====================================================
+// 4. CONSTRUCTION STANDARDS
+// =====================================================
+
+class StandardsPage extends StatefulWidget {
+  const StandardsPage({super.key});
+
+  @override
+  State<StandardsPage> createState() => _StandardsPageState();
+}
+
+class _StandardsPageState extends State<StandardsPage> {
+  final search = TextEditingController();
+
+  List<Map<String, dynamic>> standards = [];
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> load() async {
+    if (mounted) {
+      setState(() => loading = true);
+    }
+
+    try {
+      final data = await db
+          .from('construction_standards')
+          .select()
+          .order('code');
+
+      if (!mounted) return;
+
+      setState(() {
+        standards =
+            List<Map<String, dynamic>>.from(data);
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
       setState(() => loading = false);
       notice(context, 'Хатои меъёрҳо: $e');
     }
   }
 
-  void search(String value) {
-    final query = value.trim().toLowerCase();
-    setState(() {
-      filtered = query.isEmpty
-          ? standards
-          : standards.where((item) {
-              final code = item['code']?.toString().toLowerCase() ?? '';
-              final title = item['title']?.toString().toLowerCase() ?? '';
-              final type = item['document_type']?.toString().toLowerCase() ?? '';
-              return code.contains(query) || title.contains(query) || type.contains(query);
-            }).toList();
-    });
-  }
+  List<Map<String, dynamic>> get filtered {
+    final q = search.text.trim().toLowerCase();
 
-  String textOrDash(dynamic value) {
-    final text = value?.toString().trim() ?? '';
-    return text.isEmpty ? '-' : text;
+    if (q.isEmpty) return standards;
+
+    return standards.where((item) {
+      final text = [
+        item['code'],
+        item['title'],
+        item['document_type'],
+        item['edition_year'],
+      ].join(' ').toLowerCase();
+
+      return text.contains(q);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: RefreshIndicator(
-        onRefresh: load,
-        child: loading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
-                children: [
-                  TextField(
-                    controller: searchController,
-                    onChanged: search,
-                    decoration: const InputDecoration(
-                      hintText: 'Ҷустуҷӯи МҚС, ҚМҚ ё ном...',
-                      prefixIcon: Icon(Icons.search_rounded),
-                      suffixIcon: Icon(Icons.manage_search_rounded),
+    final data = filtered;
+
+    return RefreshIndicator(
+      onRefresh: load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9F6F1),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.verified_outlined,
+                  color: primary,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Пойгоҳи ҳуҷҷатҳои меъёрии сохтмонӣ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Container(
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: search,
+            onChanged: (value) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText:
+                  'Масалан: МҚС, ҚМҚ, зилзила, меҳмонхона...',
+              prefixIcon: Icon(Icons.search_rounded),
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (data.isEmpty)
+            emptyView(
+              Icons.menu_book_outlined,
+              'Меъёр ёфт нашуд',
+              'Калима ё рамзи дигарро ҷустуҷӯ кунед.',
+            )
+          else
+            ...data.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () {
+                    standardInfo(context, item);
+                  },
+                  child: Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: const Color(0xFFEAF5F1), borderRadius: BorderRadius.circular(18)),
-                    child: const Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: const Color(0xFFE0E7E4),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.verified_user_outlined, color: primary),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Ин бахш барои меъёрҳои сохтмонӣ, МҚС, ҚМҚ ва дигар ҳуҷҷатҳои меъёрӣ пешбинӣ шудааст.',
-                            style: TextStyle(height: 1.4, fontWeight: FontWeight.w600),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE9F6F1),
+                            borderRadius:
+                                BorderRadius.circular(14),
                           ),
+                          child: const Icon(
+                            Icons.menu_book_rounded,
+                            color: primary,
+                          ),
+                        ),
+                        const SizedBox(width: 13),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item['code']?.toString() ??
+                                    'Меъёр',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight:
+                                      FontWeight.w900,
+                                  color: primary,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                item['title']?.toString() ??
+                                    '',
+                                style: const TextStyle(
+                                  fontWeight:
+                                      FontWeight.w700,
+                                  height: 1.3,
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                [
+                                  item['document_type'],
+                                  item['edition_year'],
+                                ]
+                                    .where(
+                                      (value) =>
+                                          value != null &&
+                                          value
+                                              .toString()
+                                              .trim()
+                                              .isNotEmpty,
+                                    )
+                                    .join(' • '),
+                                style: const TextStyle(
+                                  color: Color(0xFF64706C),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  if (filtered.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 80),
-                      child: Column(
-                        children: [
-                          Icon(Icons.menu_book_outlined, size: 66, color: Color(0xFF8B9692)),
-                          SizedBox(height: 14),
-                          Text('Меъёр ёфт нашуд', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                    )
-                  else
-                    ...filtered.map((item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFE3E9E6)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const CircleAvatar(
-                                      backgroundColor: Color(0xFFE2F4ED),
-                                      child: Icon(Icons.menu_book_rounded, color: primary),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            textOrDash(item['code']),
-                                            style: const TextStyle(color: primary, fontWeight: FontWeight.w900, fontSize: 15),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            textOrDash(item['title']),
-                                            style: const TextStyle(fontSize: 16, height: 1.3, fontWeight: FontWeight.w800),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                const Divider(),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(child: standardInfo('Навъ', textOrDash(item['document_type']))),
-                                    const SizedBox(width: 10),
-                                    Expanded(child: standardInfo('Сол', textOrDash(item['edition_year']))),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        )),
-                ],
+                ),
               ),
+            ),
+        ],
       ),
     );
   }
 }
 
 // =====================================================
-// SHARED WIDGETS
+// 5. PRICES
 // =====================================================
 
-Widget appField(TextEditingController controller, String label) {
-  return TextField(controller: controller, decoration: InputDecoration(labelText: label));
+class PricesPage extends StatefulWidget {
+  const PricesPage({super.key});
+
+  @override
+  State<PricesPage> createState() => _PricesPageState();
 }
 
-Widget emptyView({required IconData icon, required String title, required String subtitle}) {
-  return ListView(
-    physics: const AlwaysScrollableScrollPhysics(),
-    padding: const EdgeInsets.all(28),
-    children: [
-      const SizedBox(height: 110),
-      Icon(icon, size: 72, color: const Color(0xFF7B8883)),
-      const SizedBox(height: 18),
-      Center(child: Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
-      const SizedBox(height: 8),
-      Center(
-        child: Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, height: 1.4, color: Color(0xFF6A7470)),
+class _PricesPageState extends State<PricesPage> {
+  final search = TextEditingController();
+
+  List<Map<String, dynamic>> prices = [];
+  bool loading = true;
+
+  String categoryFilter = 'Ҳама';
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> load() async {
+    if (mounted) {
+      setState(() => loading = true);
+    }
+
+    try {
+      final data = await db
+          .from('prices')
+          .select()
+          .order('created_at', ascending: false);
+
+      if (!mounted) return;
+
+      setState(() {
+        prices = List<Map<String, dynamic>>.from(data);
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => loading = false);
+      notice(context, 'Хатои нархҳо: $e');
+    }
+  }
+
+  List<String> get categories {
+    final result = <String>{};
+
+    for (final item in prices) {
+      final value = item['category']?.toString().trim();
+
+      if (value != null && value.isNotEmpty) {
+        result.add(value);
+      }
+    }
+
+    final list = result.toList()..sort();
+
+    return ['Ҳама', ...list];
+  }
+
+  List<Map<String, dynamic>> get filtered {
+    final q = search.text.trim().toLowerCase();
+
+    return prices.where((item) {
+      final category =
+          item['category']?.toString() ?? '';
+
+      if (categoryFilter != 'Ҳама' &&
+          category != categoryFilter) {
+        return false;
+      }
+
+      if (q.isEmpty) return true;
+
+      final text = [
+        item['category'],
+        item['name'],
+        item['unit'],
+        item['region'],
+        item['supplier'],
+        item['currency'],
+      ].join(' ').toLowerCase();
+
+      return text.contains(q);
+    }).toList();
+  }
+
+  Future<void> addPrice() async {
+    final category = TextEditingController();
+    final name = TextEditingController();
+    final unit = TextEditingController();
+    final price = TextEditingController();
+    final region = TextEditingController(
+      text: 'Душанбе',
+    );
+    final supplier = TextEditingController();
+
+    bool official = false;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Нархи нав'),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      appField(
+                        category,
+                        'Категория *',
+                        Icons.category_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        name,
+                        'Номи масолеҳ / кор / техника *',
+                        Icons.inventory_2_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        unit,
+                        'Воҳиди ченак (м², м³, кг, дона...) *',
+                        Icons.straighten_rounded,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        price,
+                        'Нарх *',
+                        Icons.payments_outlined,
+                        number: true,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        region,
+                        'Минтақа',
+                        Icons.location_on_outlined,
+                      ),
+                      const SizedBox(height: 10),
+                      appField(
+                        supplier,
+                        'Таъминкунанда / манбаъ',
+                        Icons.business_outlined,
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text(
+                          'Нархи расмӣ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          official
+                              ? 'Манбаи расмӣ'
+                              : 'Нархи бозорӣ',
+                        ),
+                        value: official,
+                        onChanged: (value) {
+                          setDialogState(
+                            () => official = value,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext, false);
+                  },
+                  child: const Text('Бекор'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (category.text.trim().isEmpty ||
+                        name.text.trim().isEmpty ||
+                        unit.text.trim().isEmpty ||
+                        price.text.trim().isEmpty) {
+                      notice(
+                        context,
+                        'Майдонҳои ҳатмиро пур кунед.',
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(dialogContext, true);
+                  },
+                  child: const Text('Сабт'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved == true) {
+      try {
+        await db.from('prices').insert({
+          'owner_user_id': db.auth.currentUser!.id,
+          'category': category.text.trim(),
+          'name': name.text.trim(),
+          'unit': unit.text.trim(),
+          'price': numberValue(price.text),
+          'currency': 'TJS',
+          'region': region.text.trim(),
+          'supplier': supplier.text.trim(),
+          'is_official': official,
+        });
+
+        if (!mounted) return;
+
+        notice(context, 'Нарх сабт шуд.');
+        await load();
+      } catch (e) {
+        if (!mounted) return;
+
+        notice(context, 'Хатои сабти нарх: $e');
+      }
+    }
+
+    category.dispose();
+    name.dispose();
+    unit.dispose();
+    price.dispose();
+    region.dispose();
+    supplier.dispose();
+  }
+
+  Future<void> deletePrice(
+    Map<String, dynamic> item,
+  ) async {
+    final yes = await confirmDialog(
+      context,
+      title: 'Нест кардани нарх',
+      content:
+          '«${item['name'] ?? ''}» аз рӯйхати нархҳо нест карда шавад?',
+      confirmLabel: 'Нест кардан',
+    );
+
+    if (!yes) return;
+
+    try {
+      await db.from('prices').delete().eq('id', item['id']);
+
+      if (!mounted) return;
+
+      notice(context, 'Нарх нест карда шуд.');
+      await load();
+    } catch (e) {
+      if (!mounted) return;
+      notice(context, 'Хатои нест кардани нарх: $e');
+    }
+  }
+
+  void showPriceInfo(Map<String, dynamic> item) {
+    final official = item['is_official'] == true;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            item['name']?.toString() ?? 'Нарх',
+          ),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                infoRow(
+                  'Категория',
+                  item['category'],
+                ),
+                infoRow(
+                  'Воҳид',
+                  item['unit'],
+                ),
+                infoRow(
+                  'Нарх',
+                  '${money(item['price'])} сомонӣ',
+                ),
+                infoRow(
+                  'Минтақа',
+                  item['region'],
+                ),
+                infoRow(
+                  'Манбаъ',
+                  item['supplier'],
+                ),
+                infoRow(
+                  'Навъ',
+                  official
+                      ? 'Нархи расмӣ'
+                      : 'Нархи бозорӣ',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                deletePrice(item);
+              },
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Нест кардан'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Пӯшидан'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = filtered;
+    final categoryItems = categories;
+
+    if (!categoryItems.contains(categoryFilter)) {
+      categoryFilter = 'Ҳама';
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: addPrice,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Нарх'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: search,
+                    onChanged: (value) {
+                      setState(() {});
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Ҷустуҷӯи нарх...',
+                      prefixIcon:
+                          Icon(Icons.search_rounded),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 155,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: categoryFilter,
+                    decoration: const InputDecoration(
+                      labelText: 'Категория',
+                    ),
+                    items: categoryItems.map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category,
+                        child: Text(
+                          category,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(
+                          () => categoryFilter = value,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (data.isEmpty)
+              emptyView(
+                Icons.payments_outlined,
+                'Нарх ёфт нашуд',
+                'Нархи масолеҳ, кор ё техникаро илова кунед.',
+              )
+            else
+              ...data.map(
+                (item) {
+                  final official =
+                      item['is_official'] == true;
+
+                  return Padding(
+                    padding:
+                        const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      borderRadius:
+                          BorderRadius.circular(18),
+                      onTap: () {
+                        showPriceInfo(item);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius:
+                              BorderRadius.circular(18),
+                          border: Border.all(
+                            color:
+                                const Color(0xFFE0E7E4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: official
+                                    ? const Color(
+                                        0xFFE5F5ED,
+                                      )
+                                    : const Color(
+                                        0xFFF3F4F4,
+                                      ),
+                                borderRadius:
+                                    BorderRadius.circular(
+                                  14,
+                                ),
+                              ),
+                              child: Icon(
+                                official
+                                    ? Icons
+                                        .verified_rounded
+                                    : Icons
+                                        .payments_rounded,
+                                color: official
+                                    ? primary
+                                    : const Color(
+                                        0xFF596460,
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 13),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment
+                                        .start,
+                                children: [
+                                  Text(
+                                    item['name']
+                                            ?.toString() ??
+                                        'Бе ном',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight:
+                                          FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    [
+                                      item['category'],
+                                      item['unit'],
+                                      item['region'],
+                                    ]
+                                        .where(
+                                          (value) =>
+                                              value !=
+                                                  null &&
+                                              value
+                                                  .toString()
+                                                  .trim()
+                                                  .isNotEmpty,
+                                        )
+                                        .join(' • '),
+                                    style: const TextStyle(
+                                      color: Color(
+                                        0xFF64706C,
+                                      ),
+                                    ),
+                                  ),
+                                  if (official) ...[
+                                    const SizedBox(
+                                      height: 5,
+                                    ),
+                                    const Text(
+                                      'НАРХИ РАСМӢ',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: primary,
+                                        fontWeight:
+                                            FontWeight
+                                                .w900,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  money(item['price']),
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight:
+                                        FontWeight.w900,
+                                    color: primary,
+                                  ),
+                                ),
+                                const Text(
+                                  'сомонӣ',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        Color(0xFF64706C),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
         ),
       ),
-    ],
-  );
+    );
+  }
 }
 
-Widget statCard({required IconData icon, required String title, required int value, required bool loading}) {
-  return Container(
-    padding: const EdgeInsets.all(17),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFE4E9E7)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: primary),
-        const SizedBox(height: 16),
-        loading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-            : Text('$value', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 4),
-        Text(title, style: const TextStyle(color: Color(0xFF58635F), fontWeight: FontWeight.w600)),
-      ],
+// =====================================================
+// COMMON WIDGETS
+// =====================================================
+
+Widget appField(
+  TextEditingController controller,
+  String label,
+  IconData icon, {
+  bool number = false,
+}) {
+  return TextField(
+    controller: controller,
+    keyboardType:
+        number ? TextInputType.number : TextInputType.text,
+    decoration: InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
     ),
   );
 }
 
-Widget wideStatCard({
+Widget statCard({
   required IconData icon,
   required String title,
-  required String subtitle,
   required int value,
   required bool loading,
 }) {
@@ -1030,65 +2363,267 @@ Widget wideStatCard({
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFE4E9E7)),
+      border: Border.all(
+        color: const Color(0xFFE1E7E5),
+      ),
     ),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(radius: 25, backgroundColor: const Color(0xFFE5F5EF), child: Icon(icon, color: primary)),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 3),
-              Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF6A7470))),
-            ],
+        CircleAvatar(
+          backgroundColor: const Color(0xFFE9F6F1),
+          child: Icon(
+            icon,
+            color: primary,
           ),
         ),
+        const SizedBox(height: 15),
         loading
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-            : Text('$value', style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w900)),
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                '$value',
+                style: const TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+        const SizedBox(height: 3),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF596460),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     ),
   );
 }
 
-Widget standardInfo(String label, String value) {
-  return Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(color: const Color(0xFFF5F8F7), borderRadius: BorderRadius.circular(14)),
+Widget emptyView(
+  IconData icon,
+  String title,
+  String subtitle,
+) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(
+      vertical: 50,
+      horizontal: 20,
+    ),
     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF73807B))),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+        Icon(
+          icon,
+          size: 60,
+          color: const Color(0xFF9AA5A1),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF6B7572),
+            height: 1.4,
+          ),
+        ),
       ],
     ),
   );
 }
 
 Widget appListCard({
-  required IconData leading,
+  required IconData icon,
   required String title,
   required String subtitle,
-  Widget? trailing,
-  VoidCallback? onLongPress,
+  required String trailing,
+  required VoidCallback onTap,
+  required VoidCallback onDelete,
 }) {
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFE3E9E6)),
+  return InkWell(
+    borderRadius: BorderRadius.circular(18),
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFFE0E7E4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9F6F1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              color: primary,
+            ),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF64706C),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.end,
+            children: [
+              Text(
+                trailing,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: primary,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Нест кардан',
+                onPressed: onDelete,
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
-    child: ListTile(
-      contentPadding: const EdgeInsets.all(16),
-      leading: CircleAvatar(backgroundColor: const Color(0xFFE2F4ED), child: Icon(leading, color: primary)),
-      title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-      subtitle: Padding(padding: const EdgeInsets.only(top: 6), child: Text(subtitle)),
-      trailing: trailing,
-      onLongPress: onLongPress,
+  );
+}
+
+Widget infoRow(String title, dynamic value) {
+  final text = value?.toString().trim() ?? '';
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 125,
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF64706C),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            text.isEmpty ? '—' : text,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     ),
+  );
+}
+
+void standardInfo(
+  BuildContext context,
+  Map<String, dynamic> item,
+) {
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: Text(
+          item['code']?.toString() ?? 'Меъёр',
+        ),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item['title']?.toString() ?? '',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                infoRow(
+                  'Навъи ҳуҷҷат',
+                  item['document_type'],
+                ),
+                infoRow(
+                  'Соли нашр',
+                  item['edition_year'],
+                ),
+                infoRow(
+                  'Рамз',
+                  item['code'],
+                ),
+                if (item['source_url'] != null &&
+                    item['source_url']
+                        .toString()
+                        .trim()
+                        .isNotEmpty)
+                  infoRow(
+                    'Манбаъ',
+                    item['source_url'],
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Пӯшидан'),
+          ),
+        ],
+      );
+    },
   );
 }

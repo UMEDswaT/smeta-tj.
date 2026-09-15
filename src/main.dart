@@ -11,19 +11,15 @@ const primary = Color(0xFF006B55);
 SupabaseClient get db => Supabase.instance.client;
 String get uid => db.auth.currentUser?.id ?? '';
 
-double toDouble(dynamic value) {
-  if (value is num) return value.toDouble();
-  return double.tryParse(
-        '${value ?? ''}'.trim().replaceAll(',', '.'),
-      ) ??
-      0;
+double d(dynamic v) {
+  if (v is num) return v.toDouble();
+  return double.tryParse('${v ?? ''}'.replaceAll(',', '.')) ?? 0;
 }
 
-String number(double value, [int digits = 2]) {
-  return value.toStringAsFixed(digits);
-}
+String money(double v) => '${v.toStringAsFixed(2)} сом.';
+String qty(double v) => v.toStringAsFixed(2);
 
-void showMessage(BuildContext context, String text) {
+void msg(BuildContext context, String text) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(text)),
   );
@@ -54,9 +50,7 @@ class SmetaTjApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primary,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: primary),
         scaffoldBackgroundColor: const Color(0xFFF4F7F5),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
@@ -88,11 +82,10 @@ class AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<AuthState>(
       stream: db.auth.onAuthStateChange,
-      builder: (context, snapshot) {
+      builder: (_, __) {
         if (db.auth.currentSession == null) {
           return const LoginPage();
         }
-
         return const HomePage();
       },
     );
@@ -115,10 +108,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> submit() async {
     if (email.text.trim().isEmpty || password.text.length < 6) {
-      showMessage(
-        context,
-        'Email ва рамзи на кам аз 6 аломат ворид кунед.',
-      );
+      msg(context, 'Email ва рамзи на кам аз 6 аломат ворид кунед.');
       return;
     }
 
@@ -133,10 +123,7 @@ class _LoginPageState extends State<LoginPage> {
         );
 
         if (mounted) {
-          showMessage(
-            context,
-            'Барои тасдиқи ҳисоб Email-ро санҷед.',
-          );
+          msg(context, 'Барои тасдиқи ҳисоб Email-ро санҷед.');
         }
       } else {
         await db.auth.signInWithPassword(
@@ -144,18 +131,10 @@ class _LoginPageState extends State<LoginPage> {
           password: password.text,
         );
       }
-    } on AuthException catch (e) {
-      if (mounted) {
-        showMessage(context, e.message);
-      }
     } catch (e) {
-      if (mounted) {
-        showMessage(context, '$e');
-      }
+      if (mounted) msg(context, '$e');
     } finally {
-      if (mounted) {
-        setState(() => busy = false);
-      }
+      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -171,7 +150,7 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const Icon(
                   Icons.architecture,
-                  size: 80,
+                  size: 82,
                   color: primary,
                 ),
                 const SizedBox(height: 10),
@@ -182,9 +161,7 @@ class _LoginPageState extends State<LoginPage> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const Text(
-                  'Ёрдамчии рақамии сохтмон',
-                ),
+                const Text('Ёрдамчии рақамии сохтмон'),
                 const SizedBox(height: 28),
                 TextField(
                   controller: email,
@@ -192,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                     labelText: 'Email',
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 TextField(
                   controller: password,
                   obscureText: true,
@@ -200,7 +177,7 @@ class _LoginPageState extends State<LoginPage> {
                     labelText: 'Рамз',
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -213,9 +190,7 @@ class _LoginPageState extends State<LoginPage> {
                 TextButton(
                   onPressed: busy
                       ? null
-                      : () {
-                          setState(() => register = !register);
-                        },
+                      : () => setState(() => register = !register),
                   child: Text(
                     register ? 'Ҳисоб дорам' : 'Ҳисоби нав',
                   ),
@@ -275,84 +250,54 @@ class _HomePageState extends State<HomePage> {
     switch (page) {
       case 0:
         return Dashboard(
-          openPage: (index) {
-            setState(() => page = index);
-          },
+          openPage: (i) => setState(() => page = i),
         );
 
       case 1:
         return const ConstructionCalculator();
 
       case 2:
-        return const DatabaseListPage(
+        return const SimpleTablePage(
           table: 'projects',
           titleField: 'name',
-          fields: [
-            'address',
-            'status',
-            'budget',
-          ],
+          fields: ['address', 'status', 'budget'],
         );
 
       case 3:
-        return const DatabaseListPage(
+        return const SimpleTablePage(
           table: 'estimates',
           titleField: 'title',
-          fields: [
-            'estimate_type',
-            'status',
-            'total',
-          ],
+          fields: ['estimate_type', 'status', 'total'],
         );
 
       case 4:
         return const StandardsPage();
 
       case 5:
-        return const DatabaseListPage(
-          table: 'prices',
-          titleField: 'name',
-          fields: [
-            'category',
-            'unit',
-            'price',
-            'region',
-          ],
-        );
+        return const PricesPage();
 
       case 6:
-        return const DatabaseListPage(
+        return const SimpleTablePage(
           table: 'documents',
           titleField: 'title',
-          fields: [
-            'document_type',
-            'status',
-          ],
+          fields: ['document_type', 'status'],
         );
 
       case 7:
-        return const DatabaseListPage(
+        return const SimpleTablePage(
           table: 'technical_inspections',
           titleField: 'title',
-          fields: [
-            'category',
-            'result',
-          ],
+          fields: ['category', 'result'],
         );
 
       case 8:
         return const SyncPage();
 
       case 9:
-        return const DatabaseListPage(
+        return const SimpleTablePage(
           table: 'marketplace_products',
           titleField: 'name',
-          fields: [
-            'category',
-            'unit',
-            'price',
-            'region',
-          ],
+          fields: ['category', 'unit', 'price', 'region'],
         );
 
       default:
@@ -366,9 +311,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text(
           titles[page],
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: [
           IconButton(
@@ -395,7 +338,7 @@ class _HomePageState extends State<HomePage> {
                         color: primary,
                       ),
                     ),
-                    Text('Construction Assistant 2.0'),
+                    Text('Construction Assistant 2.1'),
                   ],
                 ),
               ),
@@ -430,54 +373,33 @@ class Dashboard extends StatelessWidget {
     required this.openPage,
   });
 
-  Widget menuCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  Widget card(
+    String title,
+    String subtitle,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  icon,
-                  size: 32,
-                  color: primary,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(subtitle),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_forward_ios),
-            ],
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(18),
+        leading: CircleAvatar(
+          radius: 27,
+          backgroundColor: primary.withValues(alpha: .10),
+          child: Icon(icon, color: primary),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w900,
           ),
         ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Text(subtitle),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 17),
+        onTap: onTap,
       ),
     );
   }
@@ -488,70 +410,65 @@ class Dashboard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const Text(
-          'Сохтмонро пеш аз харид ҳисоб кунед',
+          'ҲИСОБ КУНЕД',
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 30,
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         const Text(
-          'Андозаи биноро ворид кунед. SMETA TJ масоҳат, ҳаҷм, '
-          'масолеҳ ва арзиши тахминиро ҳисоб мекунад.',
+          'Пеш аз хариди масолеҳ миқдор ва арзиши сохтмонро ҳисоб кунед.',
         ),
         const SizedBox(height: 18),
-        menuCard(
-          title: 'Хонаамро ҳисоб кун',
-          subtitle:
-              'Девор • фундамент • бетон • блок • хишт • бом • ороиш',
-          icon: Icons.home_work,
-          onTap: () => openPage(1),
+
+        card(
+          'Хонаамро ҳисоб кун',
+          'Масоҳат • девор • фундамент • блок • бетон • бом',
+          Icons.home_work,
+          () => openPage(1),
         ),
-        menuCard(
-          title: 'Сметаи касбӣ',
-          subtitle:
-              'Объектҳо, сметаҳо ва натиҷаҳои сохтмон',
-          icon: Icons.engineering,
-          onTap: () => openPage(3),
+
+        card(
+          'Сметаи касбӣ',
+          'Натиҷаҳои ҳисоб ва сметаҳои объект',
+          Icons.engineering,
+          () => openPage(3),
         ),
-        menuCard(
-          title: 'Меъёрҳои сохтмонӣ',
-          subtitle:
-              'Ҷустуҷӯ дар базаи меъёрҳои SMETA TJ',
-          icon: Icons.menu_book,
-          onTap: () => openPage(4),
+
+        card(
+          'Меъёрҳои сохтмонӣ',
+          'Меъёр → боб → § / пункт',
+          Icons.menu_book,
+          () => openPage(4),
         ),
-        menuCard(
-          title: 'Нархҳо',
-          subtitle:
-              'Базаи нархи масолеҳ ва корҳои сохтмонӣ',
-          icon: Icons.payments,
-          onTap: () => openPage(5),
+
+        card(
+          'Нархҳо',
+          'Нархномаи масолеҳ ва корҳои сохтмонӣ',
+          Icons.payments,
+          () => openPage(5),
         ),
-        const SizedBox(height: 14),
+
+        const SizedBox(height: 12),
+
         const Card(
           child: Padding(
             padding: EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.info_outline,
-                  color: primary,
-                ),
+                Icon(Icons.verified_user, color: primary),
                 SizedBox(height: 8),
                 Text(
                   'Ҳисоби бехатар',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w900),
                 ),
                 SizedBox(height: 5),
                 Text(
-                  'Ҳисобҳои миқдор ва арзиш пешакӣ мебошанд. '
-                  'Андозаи фундамент, арматура ва дигар '
-                  'конструксияҳои борбардор барои сохтмони воқеӣ '
-                  'бояд аз рӯи лоиҳа ва ҳисоби муҳандисӣ тасдиқ шаванд.',
+                  'Ҳисоб пешакӣ мебошад. Андоза ва арматураи '
+                  'конструксияҳои борбардор бояд аз рӯи лоиҳаи '
+                  'муҳандисӣ тасдиқ карда шаванд.',
                 ),
               ],
             ),
@@ -563,32 +480,30 @@ class Dashboard extends StatelessWidget {
 }
 
 // ============================================================
-// CALCULATION MODEL
+// CALCULATOR
 // ============================================================
 
-class CalculationItem {
+class CalcItem {
   final String category;
+  final String materialCode;
   final String name;
   final String unit;
   final double quantity;
-  final double unitPrice;
+  final double? price;
   final String note;
 
-  const CalculationItem({
+  const CalcItem({
     required this.category,
+    required this.materialCode,
     required this.name,
     required this.unit,
     required this.quantity,
-    required this.unitPrice,
+    this.price,
     this.note = '',
   });
 
-  double get total => quantity * unitPrice;
+  double? get total => price == null ? null : quantity * price!;
 }
-
-// ============================================================
-// AUTOMATIC CONSTRUCTION CALCULATOR
-// ============================================================
 
 class ConstructionCalculator extends StatefulWidget {
   const ConstructionCalculator({super.key});
@@ -598,1129 +513,620 @@ class ConstructionCalculator extends StatefulWidget {
       _ConstructionCalculatorState();
 }
 
-class _ConstructionCalculatorState
-    extends State<ConstructionCalculator> {
-  final calculationName =
-      TextEditingController(text: 'Хонаи ман');
+class _ConstructionCalculatorState extends State<ConstructionCalculator> {
+  final title = TextEditingController(text: 'Хонаи ман');
+  final length = TextEditingController(text: '10');
+  final width = TextEditingController(text: '12');
+  final height = TextEditingController(text: '3');
+  final floors = TextEditingController(text: '1');
 
-  final length =
-      TextEditingController(text: '10');
+  final openings = TextEditingController(text: '20');
+  final internalLength = TextEditingController(text: '20');
 
-  final width =
-      TextEditingController(text: '12');
+  final wallThickness = TextEditingController(text: '0.20');
 
-  final floorHeight =
-      TextEditingController(text: '3');
+  final foundationWidth = TextEditingController(text: '0.40');
+  final foundationHeight = TextEditingController(text: '0.80');
 
-  final floors =
-      TextEditingController(text: '1');
-
-  final openingsArea =
-      TextEditingController(text: '20');
-
-  final internalWallLength =
-      TextEditingController(text: '20');
-
-  final wallThickness =
-      TextEditingController(text: '0.20');
-
-  final foundationWidth =
-      TextEditingController(text: '0.40');
-
-  final foundationHeight =
-      TextEditingController(text: '0.80');
+  final waste = TextEditingController(text: '5');
 
   String wallMaterial = 'Газоблок 600×300×200';
-  String foundationType = 'Лентагӣ';
-  String roofType = 'Душатра';
-  String finishLevel = 'Стандарт';
-
-  double wastePercent = 5;
+  String foundation = 'Лентагӣ';
+  String roof = 'Душатра';
 
   bool busy = false;
-
-  List<CalculationItem> results = [];
-
+  List<CalcItem> results = [];
   Map<String, double> geometry = {};
 
-  double value(TextEditingController controller) {
-    return double.tryParse(
-          controller.text.trim().replaceAll(',', '.'),
-        ) ??
-        0;
-  }
+  double get L => d(length.text);
+  double get W => d(width.text);
+  double get H => d(height.text);
+  double get F => math.max(1, d(floors.text));
+  double get wasteFactor => 1 + d(waste.text) / 100;
 
-  Widget numericField(
-    TextEditingController controller,
-    String label,
-  ) {
-    return TextField(
-      controller: controller,
-      keyboardType:
-          const TextInputType.numberWithOptions(
-        decimal: true,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-      ),
-    );
-  }
-
-  Widget dropdown({
-    required String label,
-    required String value,
-    required List<String> values,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      decoration: InputDecoration(
-        labelText: label,
-      ),
-      items: values
-          .map(
-            (item) => DropdownMenuItem<String>(
-              value: item,
-              child: Text(item),
-            ),
-          )
-          .toList(),
-      onChanged: onChanged,
-    );
-  }
-
-  Future<Map<String, double>> loadPrices() async {
-    final priceMap = <String, double>{};
+  Future<Map<String, Map<String, dynamic>>> loadPrices() async {
+    final Map<String, Map<String, dynamic>> out = {};
 
     try {
-      final data = await db
-          .from('prices')
-          .select('name,price');
+      final rows = await db
+          .from('latest_material_prices')
+          .select()
+          .eq('region', 'Душанбе');
 
-      for (final row in data) {
-        final name =
-            '${row['name'] ?? ''}'.trim().toLowerCase();
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw);
+        final code = '${row['material_code'] ?? ''}';
 
-        if (name.isNotEmpty) {
-          priceMap[name] = toDouble(row['price']);
+        if (code.isNotEmpty) {
+          out[code] = row;
         }
       }
     } catch (_) {}
 
-    return priceMap;
-  }
-
-  double findPrice(
-    Map<String, double> prices,
-    List<String> words,
-  ) {
-    for (final entry in prices.entries) {
-      for (final word in words) {
-        if (entry.key.contains(word.toLowerCase())) {
-          return entry.value;
-        }
-      }
-    }
-
-    return 0;
+    return out;
   }
 
   Future<void> calculate() async {
-    final l = value(length);
-    final w = value(width);
-    final h = value(floorHeight);
-    final floorCount =
-        math.max(1, value(floors).round());
-
-    final openings =
-        math.max(0.0, value(openingsArea));
-
-    final insideLength =
-        math.max(0.0, value(internalWallLength));
-
-    final thickness =
-        value(wallThickness);
-
-    final foundationW =
-        value(foundationWidth);
-
-    final foundationH =
-        value(foundationHeight);
-
-    if (l <= 0 ||
-        w <= 0 ||
-        h <= 0 ||
-        thickness <= 0) {
-      showMessage(
-        context,
-        'Андозаҳои биноро дуруст ворид кунед.',
-      );
+    if (L <= 0 || W <= 0 || H <= 0) {
+      msg(context, 'Дарозӣ, бар ва баландиро дуруст ворид кунед.');
       return;
     }
 
     setState(() => busy = true);
 
-    final prices = await loadPrices();
+    try {
+      final priceMap = await loadPrices();
 
-    final wasteFactor =
-        1 + wastePercent / 100;
+      final footprint = L * W;
+      final floorArea = footprint * F;
+      final perimeter = 2 * (L + W);
 
-    final footprint = l * w;
+      final grossExterior = perimeter * H * F;
+      final netExterior =
+          math.max(0.0, grossExterior - d(openings.text));
 
-    final totalFloorArea =
-        footprint * floorCount;
+      final internalOneSide = d(internalLength.text) * H * F;
+      final internalFinish = internalOneSide * 2;
 
-    final perimeter =
-        2 * (l + w);
+      final wallVolume =
+          (netExterior + internalOneSide) * d(wallThickness.text);
 
-    final grossExteriorWallArea =
-        perimeter * h * floorCount;
+      final foundationVolume = foundation == 'Плита'
+          ? footprint * d(foundationHeight.text)
+          : perimeter *
+              d(foundationWidth.text) *
+              d(foundationHeight.text);
 
-    final netExteriorWallArea =
-        math.max(
-          0.0,
-          grossExteriorWallArea - openings,
-        );
+      final roofArea = roof == 'Ҳамвор'
+          ? footprint
+          : roof == 'Душатра'
+              ? footprint * 1.15
+              : footprint * 1.20;
 
-    final interiorWallOneSideArea =
-        insideLength * h * floorCount;
+      String wallCode;
+      double wallQty;
+      String wallUnit;
 
-    final interiorFinishArea =
-        interiorWallOneSideArea * 2;
+      if (wallMaterial == 'Газоблок 600×300×200') {
+        wallCode = 'AAC-600-300-200';
+        wallQty = wallVolume / (0.60 * 0.30 * 0.20) * wasteFactor;
+        wallUnit = 'дона';
+      } else if (wallMaterial == 'Газоблок 600×250×200') {
+        wallCode = 'AAC-600-250-200';
+        wallQty = wallVolume / (0.60 * 0.25 * 0.20) * wasteFactor;
+        wallUnit = 'дона';
+      } else {
+        wallCode = 'BRICK-250-120-65';
 
-    final exteriorWallVolume =
-        netExteriorWallArea * thickness;
+        // Ҳисоби пешакии геометрӣ.
+        // Коэффисиенти маҳлул дар ин ҳисоб ҳамчун меъёри расмӣ
+        // пешниҳод намешавад.
+        wallQty = wallVolume / (0.25 * 0.12 * 0.065) * wasteFactor;
+        wallUnit = 'дона';
+      }
 
-    final internalWallVolume =
-        interiorWallOneSideArea * thickness;
+      double? priceFor(String code) {
+        final row = priceMap[code];
+        if (row == null) return null;
 
-    final totalWallVolume =
-        exteriorWallVolume + internalWallVolume;
+        final p = d(row['price']);
+        return p > 0 ? p : null;
+      }
 
-    double foundationVolume = 0;
-
-    if (foundationType == 'Лентагӣ') {
-      foundationVolume =
-          perimeter *
-          foundationW *
-          foundationH;
-    } else {
-      foundationVolume =
-          footprint * foundationH;
-    }
-
-    double roofArea = footprint;
-
-    if (roofType == 'Душатра') {
-      roofArea = footprint * 1.15;
-    }
-
-    if (roofType == 'Чоршатра') {
-      roofArea = footprint * 1.20;
-    }
-
-    final finishArea =
-        netExteriorWallArea +
-        interiorFinishArea;
-
-    final items = <CalculationItem>[];
-
-    // --------------------------------------------------------
-    // WALL
-    // --------------------------------------------------------
-
-    if (wallMaterial ==
-        'Газоблок 600×300×200') {
-      const blockVolume =
-          0.60 * 0.30 * 0.20;
-
-      final quantity =
-          totalWallVolume /
-          blockVolume *
-          wasteFactor;
-
-      items.add(
-        CalculationItem(
+      results = [
+        CalcItem(
           category: 'Девор',
+          materialCode: wallCode,
           name: wallMaterial,
-          unit: 'дона',
-          quantity: quantity.ceilToDouble(),
-          unitPrice: findPrice(
-            prices,
-            [
-              'газоблок',
-              'газобетон',
-            ],
-          ),
-          note:
-              'Миқдор аз рӯи ҳаҷми девор ва захираи талафот ҳисоб шудааст.',
+          unit: wallUnit,
+          quantity: wallQty,
+          price: priceFor(wallCode),
+          note: 'Ҳисоби геометрӣ + ${waste.text}% захира',
         ),
-      );
-    } else if (wallMaterial ==
-        'Газоблок 600×250×200') {
-      const blockVolume =
-          0.60 * 0.25 * 0.20;
-
-      final quantity =
-          totalWallVolume /
-          blockVolume *
-          wasteFactor;
-
-      items.add(
-        CalculationItem(
-          category: 'Девор',
-          name: wallMaterial,
-          unit: 'дона',
-          quantity: quantity.ceilToDouble(),
-          unitPrice: findPrice(
-            prices,
-            [
-              'газоблок',
-              'газобетон',
-            ],
-          ),
-        ),
-      );
-    } else if (wallMaterial ==
-        'Хишт 250×120×65') {
-      const nominalBrickVolume =
-          0.00195;
-
-      final quantity =
-          totalWallVolume /
-          nominalBrickVolume *
-          wasteFactor;
-
-      items.add(
-        CalculationItem(
-          category: 'Девор',
-          name: wallMaterial,
-          unit: 'дона',
-          quantity: quantity.ceilToDouble(),
-          unitPrice: findPrice(
-            prices,
-            [
-              'хишт',
-              'кирпич',
-            ],
-          ),
-          note:
-              'Ҳисоби пешакӣ. Дарзи маҳлул ва усули кладка ба миқдори воқеӣ таъсир мерасонанд.',
-        ),
-      );
-    } else {
-      items.add(
-        CalculationItem(
-          category: 'Девор',
-          name: 'Бетон барои девор',
+        CalcItem(
+          category: 'Фундамент',
+          materialCode: 'CONCRETE',
+          name: 'Бетон',
           unit: 'м³',
-          quantity:
-              totalWallVolume * 1.03,
-          unitPrice: findPrice(
-            prices,
-            ['бетон'],
-          ),
+          quantity: foundationVolume * 1.03,
+          price: priceFor('CONCRETE'),
+          note: 'Ҳаҷми пешакии бетон. Андозаи фундамент аз лоиҳа.',
         ),
-      );
-    }
-
-    // --------------------------------------------------------
-    // FOUNDATION
-    // --------------------------------------------------------
-
-    items.add(
-      CalculationItem(
-        category: 'Фундамент',
-        name: 'Бетон',
-        unit: 'м³',
-        quantity:
-            foundationVolume * 1.03,
-        unitPrice: findPrice(
-          prices,
-          ['бетон'],
-        ),
-        note:
-            'Ҳаҷми геометрии фундамент + 3% захира.',
-      ),
-    );
-
-    // IMPORTANT:
-    // This is budget-only, not structural design.
-    items.add(
-      CalculationItem(
-        category: 'Фундамент',
-        name: 'Арматура — ориентири буҷетӣ',
-        unit: 'кг',
-        quantity:
-            foundationVolume *
-            90 *
-            wasteFactor,
-        unitPrice: findPrice(
-          prices,
-          [
-            'арматура',
-            'rebar',
-          ],
-        ),
-        note:
-            'Танҳо барои арзёбии пешакии буҷет. Миқдор ва диаметри воқеии арматура аз ҳисоби конструктивӣ муайян карда мешавад.',
-      ),
-    );
-
-    // --------------------------------------------------------
-    // FINISH
-    // --------------------------------------------------------
-
-    items.add(
-      CalculationItem(
-        category: 'Ороиш',
-        name: 'Масоҳати андова',
-        unit: 'м²',
-        quantity:
-            finishArea * wasteFactor,
-        unitPrice: findPrice(
-          prices,
-          [
-            'андова',
-            'штукатур',
-          ],
-        ),
-      ),
-    );
-
-    if (finishLevel != 'Иқтисодӣ') {
-      items.add(
-        CalculationItem(
-          category: 'Ороиш',
-          name: 'Масоҳати шпаклёвка',
+        CalcItem(
+          category: 'Бом',
+          materialCode: '',
+          name: 'Масоҳати бом',
           unit: 'м²',
-          quantity:
-              finishArea * wasteFactor,
-          unitPrice: findPrice(
-            prices,
-            [
-              'шпакл',
-            ],
-          ),
+          quantity: roofArea * wasteFactor,
+          price: null,
+          note: 'Барои нархи бом навъи рӯйпӯш интихоб карда мешавад.',
         ),
-      );
-
-      items.add(
-        CalculationItem(
+        CalcItem(
           category: 'Ороиш',
-          name: 'Масоҳати ранг',
+          materialCode: '',
+          name: 'Масоҳати сатҳи ороиш',
           unit: 'м²',
-          quantity:
-              finishArea * wasteFactor,
-          unitPrice: findPrice(
-            prices,
-            [
-              'ранг',
-              'краска',
-            ],
-          ),
+          quantity: (netExterior + internalFinish) * wasteFactor,
+          price: null,
+          note:
+              'Миқдори кг/л танҳо баъди интихоби рецепти тасдиқшуда ҳисоб мешавад.',
         ),
-      );
+      ];
+
+      geometry = {
+        'Масоҳати сохтмон': footprint,
+        'Масоҳати умумии ошёнаҳо': floorArea,
+        'Периметр': perimeter,
+        'Девори берунии соф': netExterior,
+        'Девори дохилӣ (як тараф)': internalOneSide,
+        'Ҳаҷми умумии девор': wallVolume,
+        'Ҳаҷми фундамент': foundationVolume,
+        'Масоҳати бом': roofArea,
+      };
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      if (mounted) msg(context, 'Хатои ҳисоб: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  double get pricedTotal {
+    double total = 0;
+
+    for (final item in results) {
+      if (item.total != null) total += item.total!;
     }
 
-    // --------------------------------------------------------
-    // ROOF
-    // --------------------------------------------------------
-
-    items.add(
-      CalculationItem(
-        category: 'Бом',
-        name: 'Масоҳати бом',
-        unit: 'м²',
-        quantity:
-            roofArea * wasteFactor,
-        unitPrice: findPrice(
-          prices,
-          [
-            'бом',
-            'кровл',
-            'профнаст',
-            'металлочереп',
-          ],
-        ),
-        note:
-            'Масоҳати пешакӣ. Геометрияи воқеии бом метавонад натиҷаро тағйир диҳад.',
-      ),
-    );
-
-    geometry = {
-      'Масоҳати як ошёна':
-          footprint,
-      'Масоҳати умумии фарш':
-          totalFloorArea,
-      'Периметри бино':
-          perimeter,
-      'Девори берунии холис':
-          netExteriorWallArea,
-      'Деворҳои дохилӣ':
-          interiorFinishArea,
-      'Ҳаҷми умумии девор':
-          totalWallVolume,
-      'Ҳаҷми фундамент':
-          foundationVolume,
-      'Масоҳати бом':
-          roofArea,
-    };
-
-    if (mounted) {
-      setState(() {
-        results = items;
-        busy = false;
-      });
-    }
+    return total;
   }
 
   Future<void> saveCalculation() async {
     if (results.isEmpty) {
-      showMessage(
-        context,
-        'Аввал ҳисобро иҷро кунед.',
-      );
+      msg(context, 'Аввал ҳисобро иҷро кунед.');
       return;
     }
 
     setState(() => busy = true);
 
     try {
-      final total = results.fold<double>(
-        0,
-        (sum, item) => sum + item.total,
-      );
-
-      final inserted = await db
+      final calc = await db
           .from('building_calculations')
           .insert({
             'user_id': uid,
-            'title':
-                calculationName.text.trim().isEmpty
-                    ? 'Ҳисоби сохтмон'
-                    : calculationName.text.trim(),
-            'building_type':
-                'Хонаи истиқоматӣ',
-            'length_m': value(length),
-            'width_m': value(width),
-            'floor_height_m':
-                value(floorHeight),
-            'floors':
-                math.max(
-                  1,
-                  value(floors).round(),
-                ),
-            'wall_material':
-                wallMaterial,
-            'wall_thickness_m':
-                value(wallThickness),
-            'openings_area_m2':
-                value(openingsArea),
-            'internal_wall_length_m':
-                value(internalWallLength),
-            'foundation_type':
-                foundationType,
-            'foundation_width_m':
-                value(foundationWidth),
-            'foundation_height_m':
-                value(foundationHeight),
-            'roof_type': roofType,
-            'finish_level':
-                finishLevel,
-            'waste_percent':
-                wastePercent,
-            'floor_area_m2':
-                geometry[
-                        'Масоҳати умумии фарш'] ??
-                    0,
-            'outer_wall_area_m2':
-                geometry[
-                        'Девори берунии холис'] ??
-                    0,
-            'inner_wall_area_m2':
-                geometry[
-                        'Деворҳои дохилӣ'] ??
-                    0,
-            'wall_volume_m3':
-                geometry[
-                        'Ҳаҷми умумии девор'] ??
-                    0,
-            'foundation_volume_m3':
-                geometry[
-                        'Ҳаҷми фундамент'] ??
-                    0,
-            'estimated_total': total,
+            'title': title.text.trim().isEmpty
+                ? 'Ҳисоби сохтмон'
+                : title.text.trim(),
+            'building_type': 'Хонаи истиқоматӣ',
+            'dimensions': {
+              'length': L,
+              'width': W,
+              'height': H,
+              'floors': F,
+            },
+            'materials': {
+              'wall_material': wallMaterial,
+              'wall_thickness': d(wallThickness.text),
+            },
+            'foundation': {
+              'type': foundation,
+              'width': d(foundationWidth.text),
+              'height': d(foundationHeight.text),
+            },
+            'roof': {'type': roof},
+            'finish': {},
+            'waste': d(waste.text),
+            'geometry': geometry,
+            'estimated_total': pricedTotal,
+            'material_total': pricedTotal,
+            'grand_total': pricedTotal,
+            'region': 'Душанбе',
+            'price_mode': 'database',
+            'calculation_status': 'calculated',
           })
           .select('id')
           .single();
 
-      final calculationId =
-          inserted['id'];
+      final calculationId = calc['id'];
 
       final rows = results
           .map(
-            (item) => {
+            (x) => {
               'user_id': uid,
-              'calculation_id':
-                  calculationId,
-              'category':
-                  item.category,
-              'material_name':
-                  item.name,
-              'unit': item.unit,
-              'quantity':
-                  item.quantity,
-              'unit_price':
-                  item.unitPrice,
-              'total_price':
-                  item.total,
-              'note': item.note,
+              'calculation_id': calculationId,
+              'category': x.category,
+              'material_name': x.name,
+              'unit': x.unit,
+              'quantity': x.quantity,
+              'unit_price': x.price ?? 0,
+              'total_price': x.total ?? 0,
+              'note': x.note,
+              'result_type': 'material',
+              'is_preliminary': true,
             },
           )
           .toList();
 
-      await db
-          .from('calculation_results')
-          .insert(rows);
+      await db.from('calculation_results').insert(rows);
 
       if (mounted) {
-        showMessage(
-          context,
-          'Ҳисоб бомуваффақият нигоҳ дошта шуд.',
-        );
+        msg(context, 'Ҳисоб бомуваффақият захира шуд.');
       }
     } catch (e) {
-      if (mounted) {
-        showMessage(
-          context,
-          'Хатои сабт: $e',
-        );
-      }
+      if (mounted) msg(context, 'Захира нашуд: $e');
     } finally {
-      if (mounted) {
-        setState(() => busy = false);
-      }
+      if (mounted) setState(() => busy = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final estimatedTotal =
-        results.fold<double>(
-      0,
-      (sum, item) => sum + item.total,
+  Future<void> createEstimate() async {
+    if (results.isEmpty) {
+      msg(context, 'Аввал ҳисобро иҷро кунед.');
+      return;
+    }
+
+    setState(() => busy = true);
+
+    try {
+      final estimate = await db
+          .from('estimates')
+          .insert({
+            'user_id': uid,
+            'title': 'Смета — ${title.text.trim()}',
+            'estimate_type': 'Ҳисоби автоматӣ',
+            'status': 'Пешакӣ',
+            'subtotal': pricedTotal,
+            'total': pricedTotal,
+          })
+          .select('id')
+          .single();
+
+      final estimateId = estimate['id'];
+
+      final items = results
+          .map(
+            (x) => {
+              'user_id': uid,
+              'estimate_id': estimateId,
+              'work_name': x.name,
+              'unit': x.unit,
+              'quantity': x.quantity,
+              'unit_price': x.price ?? 0,
+              'coefficient': 1,
+              'total_price': x.total ?? 0,
+              'category': x.category,
+            },
+          )
+          .toList();
+
+      await db.from('estimate_items').insert(items);
+
+      if (mounted) {
+        msg(context, 'Смета сохта шуд.');
+      }
+    } catch (e) {
+      if (mounted) msg(context, 'Смета сохта нашуд: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Widget input(
+    String label,
+    TextEditingController controller, {
+    String? suffix,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: label,
+          suffixText: suffix,
+        ),
+      ),
     );
+  }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text(
-          'Ҳисоби автоматии сохтмон',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 5),
-        const Text(
-          'Андозаҳои биноро ворид карда, масолеҳро интихоб кунед.',
-        ),
-        const SizedBox(height: 16),
-
-        TextField(
-          controller: calculationName,
-          decoration: const InputDecoration(
-            labelText: 'Номи ҳисоб',
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        Row(
+  Widget section(String title, List<Widget> children) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: numericField(
-                length,
-                'Дарозӣ, м',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: numericField(
-                width,
-                'Бар, м',
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        Row(
-          children: [
-            Expanded(
-              child: numericField(
-                floorHeight,
-                'Баландии ошёна, м',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: numericField(
-                floors,
-                'Ошёна',
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        Row(
-          children: [
-            Expanded(
-              child: numericField(
-                openingsArea,
-                'Дару тиреза, м²',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: numericField(
-                internalWallLength,
-                'Девори дохилӣ, м',
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        dropdown(
-          label: 'Масолеҳи девор',
-          value: wallMaterial,
-          values: const [
-            'Газоблок 600×300×200',
-            'Газоблок 600×250×200',
-            'Хишт 250×120×65',
-            'Оҳанбетон',
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-
-            setState(() {
-              wallMaterial = value;
-            });
-          },
-        ),
-
-        const SizedBox(height: 10),
-
-        numericField(
-          wallThickness,
-          'Ғафсии девор, м',
-        ),
-
-        const SizedBox(height: 10),
-
-        dropdown(
-          label: 'Навъи фундамент',
-          value: foundationType,
-          values: const [
-            'Лентагӣ',
-            'Плита',
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-
-            setState(() {
-              foundationType = value;
-            });
-          },
-        ),
-
-        const SizedBox(height: 10),
-
-        Row(
-          children: [
-            Expanded(
-              child: numericField(
-                foundationWidth,
-                'Бари фундамент, м',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: numericField(
-                foundationHeight,
-                'Баландӣ/ғафсӣ, м',
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        dropdown(
-          label: 'Навъи бом',
-          value: roofType,
-          values: const [
-            'Душатра',
-            'Чоршатра',
-            'Ҳамвор',
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-
-            setState(() {
-              roofType = value;
-            });
-          },
-        ),
-
-        const SizedBox(height: 10),
-
-        dropdown(
-          label: 'Сатҳи ороиш',
-          value: finishLevel,
-          values: const [
-            'Иқтисодӣ',
-            'Стандарт',
-            'Премиум',
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-
-            setState(() {
-              finishLevel = value;
-            });
-          },
-        ),
-
-        const SizedBox(height: 12),
-
-        Text(
-          'Захираи талафот: '
-          '${wastePercent.toStringAsFixed(0)}%',
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-
-        Slider(
-          value: wastePercent,
-          min: 0,
-          max: 15,
-          divisions: 15,
-          label:
-              '${wastePercent.toStringAsFixed(0)}%',
-          onChanged: (value) {
-            setState(() {
-              wastePercent = value;
-            });
-          },
-        ),
-
-        const SizedBox(height: 8),
-
-        SizedBox(
-          height: 54,
-          child: FilledButton.icon(
-            onPressed:
-                busy ? null : calculate,
-            icon: const Icon(
-              Icons.calculate,
-            ),
-            label: const Text(
-              'ҲИСОБ КУН',
-              style: TextStyle(
-                fontSize: 17,
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 19,
                 fontWeight: FontWeight.w900,
               ),
             ),
-          ),
+            const SizedBox(height: 14),
+            ...children,
+          ],
         ),
-
-        if (busy) ...[
-          const SizedBox(height: 10),
-          const LinearProgressIndicator(),
-        ],
-
-        if (results.isNotEmpty) ...[
-          const SizedBox(height: 24),
-
-          const Text(
-            'НАТИҶАИ ҲИСОБ',
-            style: TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: geometry.entries
-                    .map(
-                      (entry) => ListTile(
-                        dense: true,
-                        title:
-                            Text(entry.key),
-                        trailing: Text(
-                          entry.key.contains(
-                                  'Ҳаҷм')
-                              ? '${number(entry.value)} м³'
-                              : entry.key.contains(
-                                      'Периметр')
-                                  ? '${number(entry.value)} м'
-                                  : '${number(entry.value)} м²',
-                          style:
-                              const TextStyle(
-                            fontWeight:
-                                FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          const Text(
-            'Масолеҳ ва корҳо',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-
-          const SizedBox(height: 6),
-
-          for (final item in results)
-            Card(
-              child: ListTile(
-                title: Text(
-                  item.name,
-                  style: const TextStyle(
-                    fontWeight:
-                        FontWeight.w800,
-                  ),
-                ),
-                subtitle: Text(
-                  item.note.isEmpty
-                      ? item.category
-                      : '${item.category}\n${item.note}',
-                ),
-                isThreeLine:
-                    item.note.isNotEmpty,
-                trailing: Column(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${number(item.quantity)} ${item.unit}',
-                      style: const TextStyle(
-                        fontWeight:
-                            FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      item.unitPrice > 0
-                          ? '${number(item.total)} сом.'
-                          : 'Нарх нест',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            item.unitPrice > 0
-                                ? primary
-                                : Colors.orange,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          Card(
-            child: Padding(
-              padding:
-                  const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'АРЗИШИ ТАХМИНӢ',
-                      style: TextStyle(
-                        fontWeight:
-                            FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${number(estimatedTotal)} сом.',
-                    style: const TextStyle(
-                      fontSize: 19,
-                      color: primary,
-                      fontWeight:
-                          FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          FilledButton.icon(
-            onPressed:
-                busy
-                    ? null
-                    : saveCalculation,
-            icon: const Icon(Icons.save),
-            label: const Text(
-              'Ҳисобро нигоҳ дор',
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            'Агар барои ягон масолеҳ «Нарх нест» барояд, '
-            'нархи он ҳоло дар базаи Нархҳо ворид нашудааст.',
-            style: TextStyle(
-              fontSize: 12,
-            ),
-          ),
-
-          const SizedBox(height: 20),
-        ],
-      ],
+      ),
     );
-  }
-}
-
-// ============================================================
-// GENERIC DATABASE VIEW
-// ============================================================
-
-class DatabaseListPage extends StatefulWidget {
-  final String table;
-  final String titleField;
-  final List<String> fields;
-
-  const DatabaseListPage({
-    super.key,
-    required this.table,
-    required this.titleField,
-    required this.fields,
-  });
-
-  @override
-  State<DatabaseListPage> createState() =>
-      _DatabaseListPageState();
-}
-
-class _DatabaseListPageState
-    extends State<DatabaseListPage> {
-  List<Map<String, dynamic>> rows = [];
-
-  bool busy = true;
-
-  @override
-  void initState() {
-    super.initState();
-    load();
-  }
-
-  Future<void> load() async {
-    try {
-      final data = await db
-          .from(widget.table)
-          .select()
-          .order(
-            'created_at',
-            ascending: false,
-          )
-          .limit(200);
-
-      if (!mounted) return;
-
-      setState(() {
-        rows =
-            List<Map<String, dynamic>>.from(
-          data,
-        );
-
-        busy = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() => busy = false);
-
-      showMessage(
-        context,
-        '${widget.table}: $e',
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: load,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (busy)
-            const LinearProgressIndicator(),
-
-          if (!busy && rows.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text(
-                  'Ҳоло маълумот нест.',
-                ),
+    return ListView(
+      padding: const EdgeInsets.all(14),
+      children: [
+        section(
+          '1. Андозаи бино',
+          [
+            TextField(
+              controller: title,
+              decoration: const InputDecoration(
+                labelText: 'Номи ҳисоб',
               ),
             ),
+            const SizedBox(height: 10),
+            input('Дарозӣ', length, suffix: 'м'),
+            input('Бар', width, suffix: 'м'),
+            input('Баландии ошёна', height, suffix: 'м'),
+            input('Шумораи ошёна', floors),
+          ],
+        ),
 
-          for (final row in rows)
-            Card(
-              child: ListTile(
-                title: Text(
-                  '${row[widget.titleField] ?? ''}',
-                  style: const TextStyle(
-                    fontWeight:
-                        FontWeight.w800,
+        section(
+          '2. Деворҳо',
+          [
+            DropdownButtonFormField<String>(
+              initialValue: wallMaterial,
+              decoration: const InputDecoration(
+                labelText: 'Маводи девор',
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Газоблок 600×300×200',
+                  child: Text('Газоблок 600×300×200'),
+                ),
+                DropdownMenuItem(
+                  value: 'Газоблок 600×250×200',
+                  child: Text('Газоблок 600×250×200'),
+                ),
+                DropdownMenuItem(
+                  value: 'Хишти сафолӣ 250×120×65',
+                  child: Text('Хишти сафолӣ 250×120×65'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => wallMaterial = v);
+              },
+            ),
+            const SizedBox(height: 10),
+            input(
+              'Ғафсии девор',
+              wallThickness,
+              suffix: 'м',
+            ),
+            input(
+              'Масоҳати умумии дару тиреза',
+              openings,
+              suffix: 'м²',
+            ),
+            input(
+              'Дарозии умумии деворҳои дохилӣ',
+              internalLength,
+              suffix: 'м',
+            ),
+          ],
+        ),
+
+        section(
+          '3. Фундамент',
+          [
+            DropdownButtonFormField<String>(
+              initialValue: foundation,
+              decoration: const InputDecoration(
+                labelText: 'Навъи фундамент',
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Лентагӣ',
+                  child: Text('Лентагӣ'),
+                ),
+                DropdownMenuItem(
+                  value: 'Плита',
+                  child: Text('Плита'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => foundation = v);
+              },
+            ),
+            const SizedBox(height: 10),
+            input(
+              'Бари фундамент',
+              foundationWidth,
+              suffix: 'м',
+            ),
+            input(
+              'Баландӣ / ғафсӣ',
+              foundationHeight,
+              suffix: 'м',
+            ),
+            const Text(
+              'Эзоҳ: андозаи фундаментро SMETA TJ ҳамчун '
+              'ҳисоби конструктивии тайёр таъин намекунад.',
+            ),
+          ],
+        ),
+
+        section(
+          '4. Бом ва захира',
+          [
+            DropdownButtonFormField<String>(
+              initialValue: roof,
+              decoration: const InputDecoration(
+                labelText: 'Навъи бом',
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Ҳамвор',
+                  child: Text('Ҳамвор'),
+                ),
+                DropdownMenuItem(
+                  value: 'Душатра',
+                  child: Text('Душатра'),
+                ),
+                DropdownMenuItem(
+                  value: 'Чоршатра',
+                  child: Text('Чоршатра'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => roof = v);
+              },
+            ),
+            const SizedBox(height: 10),
+            input(
+              'Захираи масолеҳ',
+              waste,
+              suffix: '%',
+            ),
+          ],
+        ),
+
+        SizedBox(
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: busy ? null : calculate,
+            icon: const Icon(Icons.calculate),
+            label: Text(
+              busy ? 'Ҳисоб шуда истодааст...' : 'ҲИСОБ КУН',
+            ),
+          ),
+        ),
+
+        if (geometry.isNotEmpty) ...[
+          const SizedBox(height: 16),
+
+          section(
+            'Геометрияи бино',
+            geometry.entries
+                .map(
+                  (e) => ListTile(
+                    dense: true,
+                    title: Text(e.key),
+                    trailing: Text(
+                      qty(e.value),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+
+          section(
+            'Масолеҳ ва арзиш',
+            [
+              for (final x in results)
+                Card(
+                  color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          x.name,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          '${qty(x.quantity)} ${x.unit}',
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          x.price == null
+                              ? 'Нарх ворид нашудааст'
+                              : '${money(x.price!)} / ${x.unit}',
+                          style: TextStyle(
+                            color: x.price == null
+                                ? Colors.orange.shade900
+                                : primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (x.total != null)
+                          Text(
+                            'Ҷамъ: ${money(x.total!)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        if (x.note.isNotEmpty) ...[
+                          const SizedBox(height: 5),
+                          Text(
+                            x.note,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-                subtitle: Text(
-                  widget.fields
-                      .map(
-                        (field) =>
-                            '${row[field] ?? ''}',
-                      )
-                      .where(
-                        (text) =>
-                            text.trim().isNotEmpty,
-                      )
-                      .join(' • '),
+
+              const Divider(),
+
+              Text(
+                'АРЗИШИ МАВОДИ НАРХДОР: ${money(pricedTotal)}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: primary,
                 ),
               ),
-            ),
+
+              const SizedBox(height: 12),
+
+              OutlinedButton.icon(
+                onPressed: busy ? null : saveCalculation,
+                icon: const Icon(Icons.save),
+                label: const Text('Захира кун'),
+              ),
+
+              FilledButton.icon(
+                onPressed: busy ? null : createEstimate,
+                icon: const Icon(Icons.receipt_long),
+                label: const Text('Смета соз'),
+              ),
+            ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -1733,17 +1139,549 @@ class StandardsPage extends StatefulWidget {
   const StandardsPage({super.key});
 
   @override
-  State<StandardsPage> createState() =>
-      _StandardsPageState();
+  State<StandardsPage> createState() => _StandardsPageState();
 }
 
-class _StandardsPageState
-    extends State<StandardsPage> {
+class _StandardsPageState extends State<StandardsPage> {
   final search = TextEditingController();
+
+  bool loading = true;
+  String? error;
+  List<Map<String, dynamic>> rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+    search.addListener(() => setState(() {}));
+  }
+
+  Future<void> load() async {
+    try {
+      final data = await db
+          .from('construction_standards')
+          .select()
+          .order('code');
+
+      rows = List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      error = '$e';
+    }
+
+    if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = search.text.trim().toLowerCase();
+
+    final filtered = rows.where((x) {
+      final text =
+          '${x['code']} ${x['title']} ${x['status']} ${x['notes']}'
+              .toLowerCase();
+
+      return q.isEmpty || text.contains(q);
+    }).toList();
+
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null) {
+      return Center(child: Text(error!));
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: TextField(
+            controller: search,
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              labelText: 'Ҷустуҷӯи меъёр',
+              hintText: 'Масалан: бетон, бом, сӯхтор...',
+            ),
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: load,
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+              itemCount: filtered.length,
+              itemBuilder: (_, i) {
+                final x = filtered[i];
+
+                return Card(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(15),
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.menu_book),
+                    ),
+                    title: Text(
+                      '${x['code'] ?? ''}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text('${x['title'] ?? ''}'),
+                        const SizedBox(height: 5),
+                        Text(
+                          '${x['status'] ?? ''}',
+                          style: const TextStyle(
+                            color: primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StandardDetailPage(
+                            standard: x,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class StandardDetailPage extends StatefulWidget {
+  final Map<String, dynamic> standard;
+
+  const StandardDetailPage({
+    super.key,
+    required this.standard,
+  });
+
+  @override
+  State<StandardDetailPage> createState() =>
+      _StandardDetailPageState();
+}
+
+class _StandardDetailPageState extends State<StandardDetailPage> {
+  final search = TextEditingController();
+
+  bool loading = true;
+  String? error;
+
+  List<Map<String, dynamic>> sections = [];
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+    search.addListener(() => setState(() {}));
+  }
+
+  Future<void> load() async {
+    try {
+      final data = await db
+          .from('standard_sections')
+          .select()
+          .eq('standard_id', widget.standard['id'])
+          .order('sort_order');
+
+      sections = List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      error = '$e';
+    }
+
+    if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = search.text.trim().toLowerCase();
+
+    final filtered = sections.where((x) {
+      final text =
+          '${x['section_number']} ${x['title']} '
+                  '${x['content']} ${x['keywords']}'
+              .toLowerCase();
+
+      return q.isEmpty || text.contains(q);
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.standard['code'] ?? 'Меъёр'}'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(17),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${widget.standard['code'] ?? ''}',
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
+                      color: primary,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    '${widget.standard['title'] ?? ''}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Ҳолат: ${widget.standard['status'] ?? '—'}',
+                  ),
+                  Text(
+                    'Сол: ${widget.standard['edition_year'] ?? '—'}',
+                  ),
+                  if ('${widget.standard['notes'] ?? ''}'.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text('${widget.standard['notes']}'),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          TextField(
+            controller: search,
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              labelText: 'Ҷустуҷӯ дар боб ва пунктҳо',
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          const Text(
+            'Бобҳо ва § / пунктҳо',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          if (loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(30),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (error != null)
+            Text(error!)
+          else if (filtered.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(18),
+                child: Text(
+                  'Барои ин меъёр ҳоло боб ё пункт дар база ворид нашудааст.',
+                ),
+              ),
+            )
+          else
+            for (final x in filtered)
+              Card(
+                child: ExpansionTile(
+                  leading: const Icon(
+                    Icons.article_outlined,
+                    color: primary,
+                  ),
+                  title: Text(
+                    '${x['section_number'] ?? ''} — '
+                    '${x['title'] ?? ''}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  childrenPadding:
+                      const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${x['content'] ?? 'Шарҳ ворид нашудааст.'}',
+                      ),
+                    ),
+                    if ('${x['keywords'] ?? ''}'.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Калимаҳои калидӣ: ${x['keywords']}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+          const SizedBox(height: 20),
+
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(15),
+              child: Text(
+                'SMETA TJ шарҳи кӯтоҳ ва сохтори меъёрро нишон медиҳад. '
+                'Барои истифодаи ҳуқуқӣ ва лоиҳавӣ матни расмии '
+                'санад бояд санҷида шавад.',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// PRICES
+// ============================================================
+
+class PricesPage extends StatefulWidget {
+  const PricesPage({super.key});
+
+  @override
+  State<PricesPage> createState() => _PricesPageState();
+}
+
+class _PricesPageState extends State<PricesPage> {
+  bool loading = true;
+  String? error;
 
   List<Map<String, dynamic>> rows = [];
 
-  bool busy = true;
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+
+    try {
+      final data = await db
+          .from('prices')
+          .select()
+          .order('price_date', ascending: false);
+
+      rows = List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      error = '$e';
+    }
+
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> addPrice() async {
+    final name = TextEditingController();
+    final unit = TextEditingController();
+    final price = TextEditingController();
+    final region = TextEditingController(text: 'Душанбе');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Нархи нав'),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(
+                  labelText: 'Номи масолеҳ',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: unit,
+                decoration: const InputDecoration(
+                  labelText: 'Воҳид',
+                  hintText: 'дона / кг / м³',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: price,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Нарх',
+                  suffixText: 'сом.',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: region,
+                decoration: const InputDecoration(
+                  labelText: 'Минтақа',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Бекор'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Захира'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    if (name.text.trim().isEmpty || d(price.text) <= 0) {
+      if (mounted) msg(context, 'Ном ва нархро дуруст ворид кунед.');
+      return;
+    }
+
+    try {
+      await db.from('prices').insert({
+        'owner_user_id': uid,
+        'name': name.text.trim(),
+        'unit': unit.text.trim(),
+        'price': d(price.text),
+        'currency': 'TJS',
+        'region': region.text.trim(),
+        'price_type': 'user',
+        'is_official': false,
+        'is_active': true,
+        'price_date': DateTime.now().toIso8601String().substring(0, 10),
+      });
+
+      await load();
+
+      if (mounted) msg(context, 'Нарх захира шуд.');
+    } catch (e) {
+      if (mounted) msg(context, '$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null) {
+      return Center(child: Text(error!));
+    }
+
+    return RefreshIndicator(
+      onRefresh: load,
+      child: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          FilledButton.icon(
+            onPressed: addPrice,
+            icon: const Icon(Icons.add),
+            label: const Text('НАРХ ИЛОВА КУН'),
+          ),
+
+          const SizedBox(height: 14),
+
+          if (rows.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(18),
+                child: Text(
+                  'Нархнома ҳоло холӣ аст. '
+                  'Нархҳои воқеиро ворид кунед.',
+                ),
+              ),
+            ),
+
+          for (final x in rows)
+            Card(
+              child: ListTile(
+                title: Text(
+                  '${x['name'] ?? 'Масолеҳ'}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                subtitle: Text(
+                  '${x['region'] ?? '—'} • '
+                  '${x['price_date'] ?? '—'}',
+                ),
+                trailing: Text(
+                  '${d(x['price']).toStringAsFixed(2)} '
+                  '${x['currency'] ?? 'TJS'}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: primary,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// GENERIC DATABASE LIST
+// ============================================================
+
+class SimpleTablePage extends StatefulWidget {
+  final String table;
+  final String titleField;
+  final List<String> fields;
+
+  const SimpleTablePage({
+    super.key,
+    required this.table,
+    required this.titleField,
+    required this.fields,
+  });
+
+  @override
+  State<SimpleTablePage> createState() => _SimpleTablePageState();
+}
+
+class _SimpleTablePageState extends State<SimpleTablePage> {
+  bool loading = true;
+  String? error;
+  List<Map<String, dynamic>> rows = [];
 
   @override
   void initState() {
@@ -1754,90 +1692,66 @@ class _StandardsPageState
   Future<void> load() async {
     try {
       final data = await db
-          .from('construction_standards')
+          .from(widget.table)
           .select()
-          .order('code');
+          .order('created_at', ascending: false);
 
-      if (!mounted) return;
-
-      setState(() {
-        rows =
-            List<Map<String, dynamic>>.from(
-          data,
-        );
-
-        busy = false;
-      });
+      rows = List<Map<String, dynamic>>.from(data);
+      error = null;
     } catch (e) {
-      if (!mounted) return;
-
-      setState(() => busy = false);
-
-      showMessage(
-        context,
-        'Меъёрҳо: $e',
-      );
+      error = '$e';
     }
+
+    if (mounted) setState(() => loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final query =
-        search.text.trim().toLowerCase();
+    if (loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-    final filtered = rows.where(
-      (row) {
-        final text =
-            '${row['code']} '
-            '${row['title']} '
-            '${row['status']}'
-                .toLowerCase();
-
-        return text.contains(query);
-      },
-    ).toList();
+    if (error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(error!),
+        ),
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: load,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         children: [
-          TextField(
-            controller: search,
-            onChanged: (_) {
-              setState(() {});
-            },
-            decoration: const InputDecoration(
-              labelText:
-                  'Ҷустуҷӯи меъёр',
-              prefixIcon:
-                  Icon(Icons.search),
+          if (rows.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(18),
+                child: Text('Маълумот ҳоло нест.'),
+              ),
             ),
-          ),
 
-          const SizedBox(height: 10),
-
-          if (busy)
-            const LinearProgressIndicator(),
-
-          for (final row in filtered)
+          for (final row in rows)
             Card(
               child: ListTile(
-                leading: const Icon(
-                  Icons.verified,
-                  color: primary,
-                ),
                 title: Text(
-                  '${row['code'] ?? ''}',
+                  '${row[widget.titleField] ?? '—'}',
                   style: const TextStyle(
-                    fontWeight:
-                        FontWeight.w900,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                subtitle: Text(
-                  '${row['title'] ?? ''}\n'
-                  '${row['edition_year'] ?? ''} • '
-                  '${row['status'] ?? ''}',
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final f in widget.fields)
+                      if (row[f] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text('$f: ${row[f]}'),
+                        ),
+                  ],
                 ),
               ),
             ),
@@ -1855,74 +1769,82 @@ class SyncPage extends StatefulWidget {
   const SyncPage({super.key});
 
   @override
-  State<SyncPage> createState() =>
-      _SyncPageState();
+  State<SyncPage> createState() => _SyncPageState();
 }
 
 class _SyncPageState extends State<SyncPage> {
   bool busy = false;
-
-  String status =
-      'Барои санҷиш тугмаро пахш кунед.';
+  String status = 'Омода';
 
   Future<void> check() async {
-    setState(() => busy = true);
+    setState(() {
+      busy = true;
+      status = 'Санҷиш...';
+    });
 
     try {
-      await db
-          .from('projects')
-          .select('id')
-          .limit(1);
+      final projects = await db.from('projects').select('id');
+      final materials = await db.from('material_catalog').select('id');
+      final standards =
+          await db.from('construction_standards').select('id');
+      final sections =
+          await db.from('standard_sections').select('id');
 
-      await db
-          .from('material_catalog')
-          .select('id')
-          .limit(1);
-
-      if (mounted) {
-        setState(() {
-          status =
-              'Supabase Online — пайвастшавӣ дуруст аст.';
-        });
-      }
+      status =
+          'Online ✓\n'
+          'Объектҳо: ${projects.length}\n'
+          'Масолеҳ: ${materials.length}\n'
+          'Меъёрҳо: ${standards.length}\n'
+          'Боб/пунктҳо: ${sections.length}';
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          status = 'Хато: $e';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => busy = false);
-      }
+      status = 'Хато: $e';
+    }
+
+    if (mounted) {
+      setState(() => busy = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Card(
-          child: ListTile(
-            leading: const Icon(
-              Icons.cloud_done,
-              color: primary,
-            ),
-            title: Text(status),
-            subtitle: Text(
-              db.auth.currentUser?.email ?? '',
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(25),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.cloud_done,
+                  size: 70,
+                  color: primary,
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  'SMETA TJ ONLINE',
+                  style: TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  status,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: busy ? null : check,
+                  icon: const Icon(Icons.sync),
+                  label: const Text('САНҶИШИ ONLINE'),
+                ),
+              ],
             ),
           ),
         ),
-        FilledButton.icon(
-          onPressed: busy ? null : check,
-          icon: const Icon(Icons.sync),
-          label: const Text(
-            'Санҷидани пайвастшавӣ',
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -1935,24 +1857,20 @@ class AiPage extends StatefulWidget {
   const AiPage({super.key});
 
   @override
-  State<AiPage> createState() =>
-      _AiPageState();
+  State<AiPage> createState() => _AiPageState();
 }
 
 class _AiPageState extends State<AiPage> {
   final question = TextEditingController();
 
-  String answer = '';
-
   bool busy = false;
+  String answer =
+      'Саволро оид ба масолеҳ ё меъёрҳои сохтмонӣ ворид кунед.';
 
-  Future<void> searchDatabase() async {
-    final query =
-        question.text.trim();
+  Future<void> ask() async {
+    final q = question.text.trim();
 
-    if (query.isEmpty) {
-      return;
-    }
+    if (q.isEmpty) return;
 
     setState(() => busy = true);
 
@@ -1960,71 +1878,77 @@ class _AiPageState extends State<AiPage> {
       final standards = await db
           .from('construction_standards')
           .select()
-          .limit(300);
+          .or('code.ilike.%$q%,title.ilike.%$q%')
+          .limit(5);
+
+      final sections = await db
+          .from('standard_sections')
+          .select()
+          .or(
+            'title.ilike.%$q%,content.ilike.%$q%,keywords.ilike.%$q%',
+          )
+          .limit(8);
 
       final materials = await db
           .from('material_catalog')
           .select()
-          .limit(300);
-
-      final words = query
-          .toLowerCase()
-          .split(RegExp(r'\s+'))
-          .where(
-            (word) => word.length > 2,
-          )
-          .toList();
+          .ilike('name', '%$q%')
+          .limit(5);
 
       final buffer = StringBuffer();
 
-      for (final row in standards) {
-        final text =
-            '${row['code']} ${row['title']}'
-                .toLowerCase();
+      if (standards.isNotEmpty) {
+        buffer.writeln('МЕЪЁРҲО:');
 
-        if (words.any(text.contains)) {
+        for (final x in standards) {
           buffer.writeln(
-            '• ${row['code']} — ${row['title']}',
+            '• ${x['code']} — ${x['title']}',
           );
         }
       }
 
-      for (final row in materials) {
-        final text =
-            '${row['name']} ${row['category']}'
-                .toLowerCase();
+      if (sections.isNotEmpty) {
+        buffer.writeln('\nБОБ / ПУНКТҲО:');
 
-        if (words.any(text.contains)) {
+        for (final x in sections) {
           buffer.writeln(
-            '• ${row['name']} — ${row['unit']}',
+            '• ${x['section_number']} — ${x['title']}',
           );
         }
       }
 
-      answer = buffer.isEmpty
-          ? 'Дар база маълумоти мувофиқ нест.'
-          : buffer.toString();
+      if (materials.isNotEmpty) {
+        buffer.writeln('\nМАСОЛЕҲ:');
 
-      await db.from('ai_history').insert({
-        'user_id': uid,
-        'question': query,
-        'answer': answer,
-        'ai_mode': 'database_search',
-      });
-
-      if (mounted) {
-        setState(() {});
+        for (final x in materials) {
+          buffer.writeln(
+            '• ${x['name']} — ${x['unit']}',
+          );
+        }
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          answer = 'Хато: $e';
+
+      if (buffer.isEmpty) {
+        buffer.write(
+          'Дар база маълумоти мувофиқ ёфт нашуд.',
+        );
+      }
+
+      answer = buffer.toString();
+
+      try {
+        await db.from('ai_history').insert({
+          'user_id': uid,
+          'question': q,
+          'answer': answer,
+          'ai_mode': 'database-search',
         });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => busy = false);
-      }
+      } catch (_) {}
+    } catch (e) {
+      answer = 'Хато: $e';
+    }
+
+    if (mounted) {
+      setState(() => busy = false);
     }
   }
 
@@ -2033,48 +1957,44 @@ class _AiPageState extends State<AiPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
-          'AI SMETA TJ',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'AI SMETA TJ ҳоло маълумоти базаи сохтмониро '
+              'ҷустуҷӯ мекунад. Ин ҳоло AI-и генеративӣ нест.',
+            ),
           ),
         ),
-        const SizedBox(height: 5),
-        const Text(
-          'Ёрдамчии ҷустуҷӯӣ дар базаи SMETA TJ. '
-          'Ҳисобҳои миқдориро модули «Ҳисоби сохтмон» иҷро мекунад.',
-        ),
-        const SizedBox(height: 14),
+
+        const SizedBox(height: 10),
+
         TextField(
           controller: question,
-          maxLines: 3,
+          minLines: 2,
+          maxLines: 4,
           decoration: const InputDecoration(
             labelText: 'Савол',
+            hintText: 'Масалан: бетон, бом, сӯхтор...',
           ),
         ),
-        const SizedBox(height: 10),
-        FilledButton.icon(
-          onPressed:
-              busy
-                  ? null
-                  : searchDatabase,
-          icon: const Icon(
-            Icons.auto_awesome,
-          ),
-          label: const Text('Ҷустуҷӯ'),
-        ),
-        if (busy)
-          const LinearProgressIndicator(),
+
         const SizedBox(height: 12),
+
+        FilledButton.icon(
+          onPressed: busy ? null : ask,
+          icon: const Icon(Icons.auto_awesome),
+          label: Text(
+            busy ? 'Ҷустуҷӯ...' : 'ПУРСЕД',
+          ),
+        ),
+
+        const SizedBox(height: 15),
+
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SelectableText(
-              answer.isEmpty
-                  ? 'Натиҷа дар ин ҷо пайдо мешавад.'
-                  : answer,
-            ),
+            padding: const EdgeInsets.all(18),
+            child: SelectableText(answer),
           ),
         ),
       ],

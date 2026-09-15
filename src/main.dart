@@ -48,12 +48,68 @@ class _DashboardState extends State<Dashboard>{
  @override Widget build(BuildContext c)=>RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(16),children:[const Text('SMETA TJ ONLINE',style:TextStyle(fontSize:25,fontWeight:FontWeight.w900)),Text(db.auth.currentUser?.email??''),const SizedBox(height:12),if(busy)const LinearProgressIndicator(),card('Объектҳо','$pc',Icons.apartment),card('Сметаҳо','$ec',Icons.calculate),card('Меъёрҳо','$sc',Icons.menu_book),card('Нархҳо','$rc',Icons.payments),card('Ҷамъи сметаҳо','${money(total)} сом.',Icons.wallet)]));
 }
 
-class Projects extends StatefulWidget{const Projects({super.key});@override State<Projects> createState()=>_ProjectsState();}
-class _ProjectsState extends State<Projects>{
- List<Map<String,dynamic>> rows=[];bool busy=true;@override void initState(){super.initState();load();}
- Future<void> load()async{try{final x=await db.from('projects').select().order('created_at',ascending:false);if(mounted)setState((){rows=List<Map<String,dynamic>>.from(x);busy=false;});}catch(x){if(mounted){setState(()=>busy=false);note(context,'Объект: $x');}}}
- Future<void> edit([Map<String,dynamic>? old])async{final a=TextEditingController(text:'${old?['name']??''}'),b=TextEditingController(text:'${old?['address']??''}'),c=TextEditingController(text:'${old?['customer']??''}'),d=TextEditingController(text:'${old?['contractor']??''}'),f=TextEditingController(text:'${old?['engineer']??''}'),g=TextEditingController(text:'${old?['budget']??''}');final ok=await showDialog<bool>(context:context,builder:(z)=>AlertDialog(title:Text(old==null?'Объекти нав':'Тағйир'),content:SizedBox(width:500,child:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[fld(a,'Ном'),const SizedBox(height:7),fld(b,'Суроға'),const SizedBox(height:7),fld(c,'Фармоишгар'),const SizedBox(height:7),fld(d,'Пудратчӣ'),const SizedBox(height:7),fld(f,'Муҳандис'),const SizedBox(height:7),fld(g,'Буҷет',number:true)]))),actions:[TextButton(onPressed:()=>Navigator.pop(z,false),child:const Text('Бекор')),FilledButton(onPressed:()=>Navigator.pop(z,true),child:const Text('Сабт'))]))??false;if(!ok||a.text.trim().isEmpty)return;final data={'name':a.text.trim(),'address':b.text.trim(),'customer':c.text.trim(),'contractor':d.text.trim(),'engineer':f.text.trim(),'budget':n(g.text),'status':'Дар кор'};try{old==null?await db.from('projects').insert({...data,'user_id':uid}):await db.from('projects').update(data).eq('id',old['id']);await load();}catch(x){if(mounted)note(context,'Сабт: $x');}}
- @override Widget build(BuildContext c)=>Scaffold(floatingActionButton:FloatingActionButton(onPressed:()=>edit(),child:const Icon(Icons.add)),body:busy?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(16),children:[...rows.map((r)=>Card(child:ListTile(title:Text('${r['name']}'),subtitle:Text('${r['address']} • ${money(r['budget'])} сом.'),onTap:()=>edit(r),trailing:IconButton(icon:const Icon(Icons.delete),onPressed:()async{try{await db.from('projects').delete().eq('id',r['id']);await load();}catch(x){if(mounted)note(context,'Нест кардан: $x');}})))]))));
+class Projects extends StatefulWidget {
+  const Projects({super.key});
+  @override
+  State<Projects> createState() => _ProjectsState();
+}
+
+class _ProjectsState extends State<Projects> {
+  List<Map<String, dynamic>> rows = [];
+  bool busy = true;
+
+  @override
+  void initState() { super.initState(); load(); }
+
+  Future<void> load() async {
+    try {
+      final x = await db.from('projects').select().order('created_at', ascending: false);
+      if (mounted) setState(() { rows = List<Map<String, dynamic>>.from(x); busy = false; });
+    } catch (x) { if (mounted) { setState(() => busy = false); note(context, 'Объект: $x'); } }
+  }
+
+  Future<void> edit([Map<String, dynamic>? old]) async {
+    final a = TextEditingController(text: '${old?['name'] ?? ''}');
+    final b = TextEditingController(text: '${old?['address'] ?? ''}');
+    final c = TextEditingController(text: '${old?['customer'] ?? ''}');
+    final d = TextEditingController(text: '${old?['contractor'] ?? ''}');
+    final f = TextEditingController(text: '${old?['engineer'] ?? ''}');
+    final g = TextEditingController(text: '${old?['budget'] ?? ''}');
+    final ok = await showDialog<bool>(context: context, builder: (z) => AlertDialog(
+      title: Text(old == null ? 'Объекти нав' : 'Тағйир'),
+      content: SizedBox(width: 500, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        fld(a, 'Ном'), const SizedBox(height: 7), fld(b, 'Суроға'), const SizedBox(height: 7),
+        fld(c, 'Фармоишгар'), const SizedBox(height: 7), fld(d, 'Пудратчӣ'), const SizedBox(height: 7),
+        fld(f, 'Муҳандис'), const SizedBox(height: 7), fld(g, 'Буҷет', number: true),
+      ]))),
+      actions: [TextButton(onPressed: () => Navigator.pop(z, false), child: const Text('Бекор')), FilledButton(onPressed: () => Navigator.pop(z, true), child: const Text('Сабт'))],
+    )) ?? false;
+    if (!ok || a.text.trim().isEmpty) return;
+    final data = {'name': a.text.trim(), 'address': b.text.trim(), 'customer': c.text.trim(), 'contractor': d.text.trim(), 'engineer': f.text.trim(), 'budget': n(g.text), 'status': 'Дар кор'};
+    try {
+      if (old == null) { await db.from('projects').insert({...data, 'user_id': uid}); }
+      else { await db.from('projects').update(data).eq('id', old['id']); }
+      await load();
+    } catch (x) { if (mounted) note(context, 'Сабт: $x'); }
+  }
+
+  @override
+  Widget build(BuildContext c) => Scaffold(
+    floatingActionButton: FloatingActionButton(onPressed: () => edit(), child: const Icon(Icons.add)),
+    body: busy ? const Center(child: CircularProgressIndicator()) : RefreshIndicator(
+      onRefresh: load,
+      child: ListView(padding: const EdgeInsets.all(16), children: [
+        ...rows.map((r) => Card(child: ListTile(
+          title: Text('${r['name']}'), subtitle: Text('${r['address']} • ${money(r['budget'])} сом.'),
+          onTap: () => edit(r),
+          trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () async {
+            try { await db.from('projects').delete().eq('id', r['id']); await load(); }
+            catch (x) { if (mounted) note(context, 'Нест кардан: $x'); }
+          }),
+        ))),
+      ]),
+    ),
+  );
 }
 
 class Estimates extends StatefulWidget{const Estimates({super.key});@override State<Estimates> createState()=>_EstimatesState();}
@@ -87,11 +143,11 @@ class _PricesState extends State<Prices>{
  @override Widget build(BuildContext c)=>Scaffold(floatingActionButton:FloatingActionButton(onPressed:add,child:const Icon(Icons.add)),body:ListView(padding:const EdgeInsets.all(16),children:[...rows.map((r)=>Card(child:ListTile(title:Text('${r['name']}'),subtitle:Text('${r['category']} • ${r['unit']} • ${r['supplier']}'),trailing:Text('${money(r['price'])} сом.'))))]));
 }
 
-class Documents extends StatelessWidget{const Documents({super.key});@override Widget build(BuildContext c)=>FutureBuilder<List<Map<String,dynamic>>>(future:db.from('estimates').select().then((x)=>List<Map<String,dynamic>>.from(x)),builder:(c,s)=>s.connectionState!=ConnectionState.done?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[const Text('Смета / Санад / Ҳисобот',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),...?(s.data?.map((r)=>Card(child:ListTile(leading:const Icon(Icons.description,color:primary),title:Text('${r['title']}'),subtitle:Text('${money(r['total'])} сомонӣ'),trailing:PopupMenuButton(itemBuilder:(_)=>const[PopupMenuItem(child:Text('Смета')),PopupMenuItem(child:Text('Санад')),PopupMenuItem(child:Text('Ҳисобот'))]))))) ]));}
+class Documents extends StatelessWidget{const Documents({super.key});@override Widget build(BuildContext c)=>FutureBuilder<List<Map<String,dynamic>>>(future:db.from('estimates').select().then((x)=>List<Map<String,dynamic>>.from(x)),builder:(c,s)=>s.connectionState!=ConnectionState.done?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[const Text('Смета / Санад / Ҳисобот',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),...(s.data ?? <Map<String,dynamic>>[]).map((r)=>Card(child:ListTile(leading:const Icon(Icons.description,color:primary),title:Text('${r['title']}'),subtitle:Text('${money(r['total'])} сомонӣ'),trailing:PopupMenuButton(itemBuilder:(_)=>const[PopupMenuItem(child:Text('Смета')),PopupMenuItem(child:Text('Санад')),PopupMenuItem(child:Text('Ҳисобот'))])))) ]));}
 class Technical extends StatefulWidget{const Technical({super.key});@override State<Technical> createState()=>_TechnicalState();}
 class _TechnicalState extends State<Technical>{final m={'Мутобиқат ба лоиҳа':false,'Сифати бетон':false,'Арматура':false,'Андоза ва отметка':false,'Бехатарӣ':false,'Корҳои пӯшида':false};@override Widget build(BuildContext c)=>ListView(padding:const EdgeInsets.all(16),children:[const Text('Checklist назорати техникӣ',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),...m.keys.map((k)=>Card(child:CheckboxListTile(title:Text(k),value:m[k],onChanged:(v)=>setState(()=>m[k]=v??false))))]);}
 class Sync extends StatelessWidget{const Sync({super.key});@override Widget build(BuildContext c)=>ListView(padding:const EdgeInsets.all(16),children:[Card(child:ListTile(leading:const Icon(Icons.cloud_done,color:primary),title:const Text('Supabase Online'),subtitle:Text(db.auth.currentSession==null?'Offline':'Online • ${db.auth.currentUser?.email??''}'))),FilledButton.icon(onPressed:()async{try{await db.from('projects').select('id').limit(1);if(c.mounted)note(c,'Sync OK');}catch(x){if(c.mounted)note(c,'Sync: $x');}},icon:const Icon(Icons.sync),label:const Text('Санҷидани Sync'))]);}
-class Market extends StatelessWidget{const Market({super.key});@override Widget build(BuildContext c)=>FutureBuilder<List<Map<String,dynamic>>>(future:db.from('prices').select().then((x)=>List<Map<String,dynamic>>.from(x)),builder:(c,s)=>s.connectionState!=ConnectionState.done?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[const Text('Marketplace',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),...?(s.data?.where((r)=>'${r['supplier']??''}'.isNotEmpty).map((r)=>Card(child:ListTile(leading:const Icon(Icons.storefront,color:primary),title:Text('${r['name']}'),subtitle:Text('${r['supplier']} • ${r['region']}'),trailing:Text('${money(r['price'])} сом.'))))) ]));}
+class Market extends StatelessWidget{const Market({super.key});@override Widget build(BuildContext c)=>FutureBuilder<List<Map<String,dynamic>>>(future:db.from('prices').select().then((x)=>List<Map<String,dynamic>>.from(x)),builder:(c,s)=>s.connectionState!=ConnectionState.done?const Center(child:CircularProgressIndicator()):ListView(padding:const EdgeInsets.all(16),children:[const Text('Marketplace',style:TextStyle(fontSize:20,fontWeight:FontWeight.w900)),...(s.data ?? <Map<String,dynamic>>[]).where((r)=>'${r['supplier']??''}'.isNotEmpty).map((r)=>Card(child:ListTile(leading:const Icon(Icons.storefront,color:primary),title:Text('${r['name']}'),subtitle:Text('${r['supplier']} • ${r['region']}'),trailing:Text('${money(r['price'])} сом.')))) ]));}
 class Ai extends StatefulWidget{const Ai({super.key});@override State<Ai> createState()=>_AiState();}
 class _AiState extends State<Ai>{final q=TextEditingController();String a='';Future<void> run()async{try{final s=await db.from('construction_standards').select().limit(100);final p=await db.from('prices').select().limit(100);final w=q.text.toLowerCase().split(RegExp(r'\s+')).where((x)=>x.length>2);final sm=s.where((r)=>w.any((x)=>'${r['code']} ${r['title']}'.toLowerCase().contains(x))).take(5);final pm=p.where((r)=>w.any((x)=>'${r['name']} ${r['category']}'.toLowerCase().contains(x))).take(5);final b=StringBuffer();for(final r in sm){b.writeln('МЕЪЁР: ${r['code']} — ${r['title']}');}for(final r in pm){b.writeln('НАРХ: ${r['name']} — ${money(r['price'])} сом/${r['unit']}');}if(b.isEmpty)b.write('Дар база маълумоти мувофиқ нест.');if(mounted)setState(()=>a=b.toString());}catch(x){if(mounted)setState(()=>a='Хато: $x');}}@override Widget build(BuildContext c)=>ListView(padding:const EdgeInsets.all(16),children:[const Text('AI SMETA TJ',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),const Text('Ҷустуҷӯи интеллектуалӣ дар базаи меъёрҳо ва нархҳо.'),const SizedBox(height:12),TextField(controller:q,maxLines:3,decoration:const InputDecoration(labelText:'Савол')),const SizedBox(height:10),FilledButton.icon(onPressed:run,icon:const Icon(Icons.auto_awesome),label:const Text('Таҳлил')),const SizedBox(height:12),SelectableText(a)]);}
 
